@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenless Protocol • Agent Asset Tracker</title>
+  <script>
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { purple: '#a855f7', cyan: '#06b6d4', amber: '#f59e0b' }
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #09090b; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .drag-over-pod { outline: 2px dashed #a855f7; outline-offset: -2px; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 font-sans antialiased selection:bg-purple-500 selection:text-white min-h-screen pb-20">
+
+  <div id="app" class="flex flex-col min-h-screen"></div>
+  <div id="modal-root"></div>
+
+  <script>
+    function getSvg(name, cls = 'w-4 h-4') {
+      const svgs = {
+        users: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+        bookmark: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>`,
+        database: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>`,
+        crosshair: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 12h-4M6 12H2M12 6V2M12 22v-4"/></svg>`,
+        star: `<svg class="${cls}" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+        check: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>`,
+        flask: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 2v7.31M14 2v7.31M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>`,
+        checkCircle: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>`,
+        alertTriangle: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13" stroke-linecap="round" stroke-width="2"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>`,
+        trash: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6" stroke-linecap="round" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+        plus: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke-linecap="round" stroke-width="2"/><line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round" stroke-width="2"/></svg>`,
+        x: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" stroke-linecap="round" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke-linecap="round" stroke-width="2"/></svg>`,
+        search: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke-linecap="round" stroke-width="2"/></svg>`,
+        sparkles: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>`,
+        zap: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>`,
+        scale: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1zm0 0a5 5 0 0 0-8 0m8 0H8m0 0-3-8-3 8c.87.65 1.92 1 3 1s2.13-.35 3-1zm4-12H4M12 3v18"/></svg>`,
+        swords: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m14.5 17.5 3 3 3-3-3-3M6.5 9.5l-3-3 3-3 3 3M13 19l6-6M5 11l6-6M9.5 14.5 4 20M14.5 9.5 20 4M8.5 8.5l7 7"/></svg>`,
+        shield: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+        arrowUp: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>`,
+        arrowDown: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>`,
+        bullet: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 21h6v-9a3 3 0 0 0-6 0v9z"/><line x1="8" y1="21" x2="16" y2="21" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="16" x2="15" y2="16" stroke-width="1.5"/></svg>`,
+        nuclear: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8.5a4 4 0 0 0-3.46 2L6 8a8 8 0 0 1 12 0l-2.54 2.5A4 4 0 0 0 12 8.5zM14.5 13.5a4 4 0 0 0 0 4L17 20a8 8 0 0 0 2-11.46l-3.46 2a4 4 0 0 0-1.04 2.96zM9.5 13.5a4 4 0 0 1 0 4L7 20a8 8 0 0 1-2-11.46l3.46 2a4 4 0 0 1 1.04 2.96z"/></svg>`,
+        mallet: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m14 4 6 6-3 3-6-6 3-3zM4 20l7.5-7.5"/></svg>`,
+        gripVertical: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>`,
+        heart: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>`,
+        award: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="8" r="7" stroke-width="2"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        lightbulb: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 18h6m-5 4h4m-7-9.58A6 6 0 1 1 18 12.42c0 2.22-1.21 4.16-3 5.08V18H9v-.5A5.99 5.99 0 0 1 7 12.42z"/></svg>`,
+        lock: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke-width="2"/></svg>`,
+        unlock: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1" stroke-width="2"/></svg>`,
+        target: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><circle cx="12" cy="12" r="6" stroke-width="2"/><circle cx="12" cy="12" r="2" stroke-width="2"/></svg>`,
+        refresh: `<svg class="${cls}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>`
+      };
+      return svgs[name] || '';
+    }
+
+    const ATTRIBUTES = {
+      Electric: { name: 'Electric', color: '#3b82f6', bg: 'bg-blue-950/40', border: 'border-blue-500/50', text: 'text-blue-400' },
+      Fire: { name: 'Fire', color: '#f97316', bg: 'bg-orange-950/40', border: 'border-orange-500/50', text: 'text-orange-400' },
+      Ice: { name: 'Ice', color: '#38bdf8', bg: 'bg-sky-950/40', border: 'border-sky-500/50', text: 'text-sky-400' },
+      Physical: { name: 'Physical', color: '#eab308', bg: 'bg-amber-950/40', border: 'border-amber-500/50', text: 'text-amber-400' },
+      Ether: { name: 'Ether', color: '#ec4899', bg: 'bg-pink-950/40', border: 'border-pink-500/50', text: 'text-pink-400' },
+      Frost: { name: 'Frost', color: '#06b6d4', bg: 'bg-cyan-950/40', border: 'border-cyan-500/50', text: 'text-cyan-300' },
+      Wind: { name: 'Wind', color: '#10b981', bg: 'bg-emerald-950/40', border: 'border-emerald-500/50', text: 'text-emerald-400' },
+      Lumiflux: { name: 'Lumiflux', color: '#facc15', bg: 'bg-yellow-950/40', border: 'border-yellow-500/50', text: 'text-yellow-300' },
+      'Honed Edge': { name: 'Honed Edge', color: '#cbd5e1', bg: 'bg-slate-800/50', border: 'border-slate-400/50', text: 'text-slate-200' },
+    };
+
+    const SPECIALTIES = {
+      Attack: { color: 'text-red-400', bg: 'bg-red-950/40', border: 'border-red-500/50', icon: 'swords' },
+      Stun: { color: 'text-amber-400', bg: 'bg-amber-950/40', border: 'border-amber-500/50', icon: 'mallet' },
+      Support: { color: 'text-emerald-400', bg: 'bg-emerald-950/40', border: 'border-emerald-500/50', icon: 'bullet' },
+      Anomaly: { color: 'text-purple-400', bg: 'bg-purple-950/40', border: 'border-purple-500/50', icon: 'nuclear' },
+      Defense: { color: 'text-blue-400', bg: 'bg-blue-950/40', border: 'border-blue-500/50', icon: 'shield' },
+      Rupture: { color: 'text-rose-400', bg: 'bg-rose-950/40', border: 'border-rose-500/50', icon: 'arrowUp' },
+      Armorer: { color: 'text-teal-400', bg: 'bg-teal-950/40', border: 'border-teal-500/50', icon: 'arrowDown' }
+    };
+
+    const FACTIONS = [
+      'Victoria Housekeeping Co.', 'Cunning Hares', 'Belobog Heavy Industries',
+      'New Eridu Public Security', 'Sons of Calydon', 'Section 6', 'Obol Squad',
+      'Stars of Lyra', 'Spook Shack', 'Krampus Compliance Authority', 'Yunkui Summit',
+      'Angels of Delusion', 'Flint Workshop', 'Mockingbird', 'External Strategy Department',
+      'Airspace Patrol Department', 'Covenant of Dayat', 'Metropolitan Order Division'
+    ];
+
+    const INITIAL_AGENTS = [
+      { id: 'alice', name: 'Alice', rarity: 'S', attribute: 'Physical', specialty: 'Anomaly', faction: 'Spook Shack', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly'], procText: 'Same Element, Faction, or Anomaly', position: 'Main On-Field', focus: 'Disorder Detonation & Physical Anomaly', bonusText: 'Assault DMG +30%, Physical Anomaly Proficiency +50', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Alice_Thymefield_Portrait.png' },
+      { id: 'anby', name: 'Anby', rarity: 'A', attribute: 'Electric', specialty: 'Stun', faction: 'Cunning Hares', owned: true, level: 20, mindscape: 0, wEngine: 'Demara Battery II', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Anby_Demara_Portrait.png', procRoles: [], procText: 'Same Element (Electric) or Faction', position: 'Quick-Swap Stunner', focus: 'Rapid Daze Stagger & Energy Regen', bonusText: '4th Basic hit and Thunderbolt generate +3.6 Energy' },
+      { id: 'anton', name: 'Anton', rarity: 'A', attribute: 'Electric', specialty: 'Attack', faction: 'Belobog Heavy Industries', owned: true, level: 1, mindscape: 0, wEngine: 'Drill Rig - Red Axis', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Anton_Ivanov_Portrait.png', procRoles: [], procText: 'Same Element (Electric) or Faction', position: 'Main On-Field', focus: 'Burst DPS during Shock Windows', bonusText: 'Attacks against Shocked enemies deal +45% additional DMG' },
+      { id: 'aria', name: 'Aria', rarity: 'S', attribute: 'Ether', specialty: 'Anomaly', faction: 'Angels of Delusion', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly', 'Support'], procText: 'Same Element, Faction, Anomaly, or Support', position: 'Quick-Swap Anomaly', focus: 'Corruption Buildup & Ether Shreads', bonusText: 'Corruption DMG +25%, Ether DMG +20%', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Aria_Portrait.png' },
+      { id: 'astra_yao', name: 'Astra Yao', rarity: 'S', attribute: 'Ether', specialty: 'Support', faction: 'Stars of Lyra', owned: true, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Astra_Yao_Portrait.png', procRoles: ['Support', 'Attack'], procText: 'Same Element, Faction, Support, or Attack', position: 'Strong Off-Field Support', focus: 'Ether DMG Buff & Team Energy Share', bonusText: 'Ether DMG +25%, team Energy Generation Rate +15%' },
+      { id: 'banyue', name: 'Banyue', rarity: 'S', attribute: 'Fire', specialty: 'Rupture', faction: 'Krampus Compliance Authority', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Rupture', 'Attack'], procText: 'Same Element, Faction, Rupture, or Attack', position: 'Quick-Swap Rupture', focus: 'Armor Fracture & DEF Shred', bonusText: 'Fire Rupture DEF Shred +20%, Burn trigger DMG +25%', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Banyue_Portrait.png' },
+      { id: 'ben', name: 'Ben', rarity: 'A', attribute: 'Fire', specialty: 'Defense', faction: 'Belobog Heavy Industries', owned: true, level: 1, mindscape: 0, wEngine: 'Big Cylinder', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Ben_Bigger_Portrait.png', procRoles: [], procText: 'Same Element (Fire) or Faction', position: 'Defensive Anchor / Off-Field', focus: 'Shield Fortification & CRIT Rate Buff', bonusText: 'While shield is active, all squad members gain +16% CRIT Rate' },
+      { id: 'billy_kid', name: 'Billy Kid', rarity: 'A', attribute: 'Physical', specialty: 'Attack', faction: 'Cunning Hares', owned: true, level: 20, mindscape: 0, wEngine: 'Starlight Engine Replica', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Billy_Kid_Portrait.png', procRoles: [], procText: 'Same Element (Physical) or Faction', position: 'Main On-Field', focus: 'AoE Physical Bullet Burst', bonusText: 'Chain Attack DMG +50%, stacking up to 2 times' },
+      { id: 'burnice', name: 'Burnice', rarity: 'S', attribute: 'Fire', specialty: 'Anomaly', faction: 'Sons of Calydon', owned: false, level: 1, mindscape: 0, wEngine: 'Flamemaker Shaker', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Burnice_White_Portrait.png', procRoles: ['Anomaly'], procText: 'Same Element, Faction, or Anomaly', position: 'Off-Field Anomaly Sub-DPS', focus: 'Afterburn DoT & Disorder Trigger', bonusText: 'Scorched DMG +30%, Fire Anomaly Buildup +65%' },
+      { id: 'caesar', name: 'Caesar', rarity: 'S', attribute: 'Physical', specialty: 'Defense', faction: 'Sons of Calydon', owned: true, level: 1, mindscape: 0, wEngine: 'Tusks of Fury', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Caesar_King_Portrait.png', procRoles: ['Defense', 'Attack', 'Stun'], procText: 'Same Element, Faction, Defense, Attack, or Stun', position: 'Quick-Swap Defensive Support', focus: '1000 ATK Shield & Anti-Interrupt', bonusText: 'Shield grants team +25% DMG and +15% Daze accumulation' },
+      { id: 'cissia', name: 'Cissia', rarity: 'S', attribute: 'Electric', specialty: 'Attack', faction: 'Metropolitan Order Division', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack', 'Support'], procText: 'Same Element, Faction, Attack, or Support', position: 'Main On-Field', focus: 'Electric Shock Burst & Pierce', bonusText: 'Electric ATK +18%, Shock reaction rate +25%', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Cissia_Portrait.png' },
+      { id: 'claret_flint', name: 'Claret Flint', rarity: 'S', attribute: 'Electric', specialty: 'Armorer', faction: 'Flint Workshop', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Armorer', 'Defense', 'Attack'], procText: 'Same Element, Faction, Armorer, Defense, or Attack', position: 'Main On-Field Carry / Armorer', focus: 'Weapon Tuning, Precision Cleave & Heavy Burst', bonusText: 'Fortification buffs +20%, Team ATK +12%; Basic & EX Special gain +30% True Crit Scaling', isCarryArmorer: true, avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Claret_Flint_Portrait.png' },
+      { id: 'corin', name: 'Corin', rarity: 'A', attribute: 'Physical', specialty: 'Attack', faction: 'Victoria Housekeeping Co.', owned: true, level: 1, mindscape: 0, wEngine: 'Housekeeper', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Corin_Wickes_Portrait.png', procRoles: [], procText: 'Same Element (Physical) or Faction', position: 'Burst Punisher (Stun Windows)', focus: 'Stunned Target Saw Execution', bonusText: 'Attacks against Stunned enemies deal +35% bonus DMG' },
+      { id: 'dialyn', name: 'Dialyn', rarity: 'S', attribute: 'Physical', specialty: 'Stun', faction: 'Krampus Compliance Authority', owned: true, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack', 'Rupture'], procText: 'Same Faction or Attack/Rupture character', position: 'Quick-Swap Stunner', focus: 'High Impact Posture Break', bonusText: 'EX Specials deal +320% ATK (Attack ally) or +400% Sheer Force (Rupture ally) bonus DMG', strictFactionOrRole: true, avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/9/91/Agent_Dialyn_Portrait.png' },
+      { id: 'ellen_joe', name: 'Ellen Joe', rarity: 'S', attribute: 'Ice', specialty: 'Attack', faction: 'Victoria Housekeeping Co.', owned: false, level: 1, mindscape: 0, wEngine: 'Deep Sea Visitor', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Ellen_Joe_Portrait.png', procRoles: [], procText: 'Same Element (Ice) or Faction', position: 'Main On-Field Hypercarry', focus: 'Sustained Ice Scissor Burst & Dash Shred', bonusText: 'Ice DMG +30%; Roaming sprint state duration extended' },
+      { id: 'evelyn', name: 'Evelyn', rarity: 'S', attribute: 'Fire', specialty: 'Attack', faction: 'Stars of Lyra', owned: false, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Evelyn_Chevalier_Portrait.png', procRoles: ['Attack', 'Support'], procText: 'Same Element, Faction, Attack, or Support', position: 'Main On-Field', focus: 'Fire Critical DPS & EX Burst', bonusText: 'Fire CRIT Rate +15%, EX Special DMG +25%' },
+      { id: 'grace', name: 'Grace', rarity: 'S', attribute: 'Electric', specialty: 'Anomaly', faction: 'Belobog Heavy Industries', owned: true, level: 1, mindscape: 0, wEngine: 'Fusion Compiler', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Grace_Howard_Portrait.png', procRoles: [], procText: 'Same Element (Electric) or Faction', position: 'Fast-Paced Anomaly Driver', focus: 'Rapid Shock Buildup & EX Grenades', bonusText: 'EX Special increases enemy Shock DMG taken by +18% (2 stacks)' },
+      { id: 'harumasa', name: 'Harumasa', rarity: 'S', attribute: 'Electric', specialty: 'Attack', faction: 'Section 6', owned: false, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Asaba_Harumasa_Portrait.png', procRoles: ['Attack', 'Anomaly'], procText: 'Same Element, Faction, Attack, or Anomaly', position: 'Main On-Field Burst', focus: 'CRIT Stance Bow Execution', bonusText: 'CRIT Rate +15%, Electric Chain Attack DMG +30%' },
+      { id: 'hugo', name: 'Hugo', rarity: 'S', attribute: 'Ice', specialty: 'Attack', faction: 'Mockingbird', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack', 'Stun'], procText: 'Same Element, Faction, Attack, or Stun', position: 'Main On-Field', focus: 'Shatter Burst & Freeze Multipliers', bonusText: 'Freeze duration +2s, Shatter burst DMG +35%', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Hugo_Vlad_Portrait.png' },
+      { id: 'jane_doe', name: 'Jane Doe', rarity: 'S', attribute: 'Physical', specialty: 'Anomaly', faction: 'New Eridu Public Security', owned: true, level: 1, mindscape: 0, wEngine: 'Sharpened Stinger', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Jane_Doe_Portrait.png', procRoles: ['Anomaly'], procText: 'Same Element, Faction, or Anomaly', position: 'Main On-Field Anomaly Carry', focus: 'Relentless Assault & Passion Stream', bonusText: 'Physical Anomaly Buildup +20%; Passion state duration extended' },
+      { id: 'ju_fufu', name: 'Ju Fufu', rarity: 'S', attribute: 'Fire', specialty: 'Stun', faction: 'Yunkui Summit', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Stun', 'Defense'], procText: 'Same Element, Faction, Stun, or Defense', position: 'Quick-Swap Stunner', focus: 'Fire Daze Accumulation', bonusText: 'Stun DMG multiplier +30%, Fire Daze +20%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/f/f3/Agent_Ju_Fufu_Portrait.png' },
+      { id: 'koleda_belobog', name: 'Koleda Belobog', rarity: 'S', attribute: 'Fire', specialty: 'Stun', faction: 'Belobog Heavy Industries', owned: false, level: 1, mindscape: 0, wEngine: 'Hellfire Gears', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Koleda_Belobog_Portrait.png', procRoles: [], procText: 'Same Element (Fire) or Faction', position: 'Burst Stunner', focus: 'Hammer Stagger & Chain DMG Amp', bonusText: 'EX Special increases squad Chain Attack DMG by +35% for 12s' },
+      { id: 'lighter', name: 'Lighter', rarity: 'S', attribute: 'Fire', specialty: 'Stun', faction: 'Sons of Calydon', owned: false, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Lighter_Portrait.png', procRoles: ['Attack', 'Stun'], procText: 'Same Element, Faction, Attack, or Stun', position: 'Brawler Stun / Sub-DPS', focus: 'Fire/Ice Elemental Shred & Daze', bonusText: 'Fire & Ice DMG +25%, Stunned target Impact +15%' },
+      { id: 'lucia', name: 'Lucia', rarity: 'S', attribute: 'Ether', specialty: 'Support', faction: 'Spook Shack', owned: true, level: 1, mindscape: 0, wEngine: 'Dreamlit Hearth', procRoles: ['Stun', 'Rupture', 'Anomaly'], procText: 'Same Element, Faction, Stun, Rupture, or Anomaly', position: 'Strong Off-Field Support', focus: 'Max HP Amplification & Ether Veil Sheer Buff', bonusText: 'Ether Veil grants +15% squad Max HP and team Sheer DMG +30%', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Lucia_Elowen_Portrait.png' },
+      { id: 'lucy', name: 'Lucy', rarity: 'A', attribute: 'Fire', specialty: 'Support', faction: 'Sons of Calydon', owned: true, level: 1, mindscape: 0, wEngine: 'Kaboom the Cannon', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Luciana_de_Montefio_Portrait.png', procRoles: [], procText: 'Same Element (Fire) or Faction', position: 'Strong Off-Field Support', focus: 'Team ATK Cheer Buff & Boar Swarm', bonusText: 'Guard Boars trigger Cheer, granting team +16% ATK (up to 600)' },
+      { id: 'manato', name: 'Manato', rarity: 'A', attribute: 'Fire', specialty: 'Rupture', faction: 'Spook Shack', owned: true, level: 1, mindscape: 0, wEngine: '', procRoles: ['Rupture', 'Support'], procText: 'Same Element, Faction, Rupture, or Support', position: 'Quick-Swap Rupture', focus: 'Armor Penetration & Fire Shred', bonusText: 'Armor Penetration +18%, Fire DEF Shred on target +15%', hpScaling: true, avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Komano_Manato_Portrait.png' },
+      { id: 'miyabi', name: 'Miyabi', rarity: 'S', attribute: 'Frost', specialty: 'Anomaly', faction: 'Section 6', owned: false, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Hoshimi_Miyabi_Portrait.png', procRoles: ['Anomaly', 'Attack'], procText: 'Same Element, Faction, Anomaly, or Attack', position: 'Main On-Field Blade Carry', focus: 'Frostbite Slashes & CRIT Anomaly', bonusText: 'Frost DMG +30%, Frostbite Buildup +40%, CRIT Rate +15%' },
+      { id: 'nangong_yu', name: 'Nangong Yu', rarity: 'S', attribute: 'Ether', specialty: 'Stun', faction: 'Angels of Delusion', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly'], procText: 'Same Faction (Angels of Delusion) or Anomaly specialty', position: 'Quick-Swap Stunner', focus: 'Ether Daze & Corruption Stun', bonusText: 'Ether Daze +25%, Corruption duration +3s', strictFactionOrRole: true, avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Nangong_Yu_Portrait.png' },
+      { id: 'nekomata', name: 'Nekomata', rarity: 'S', attribute: 'Physical', specialty: 'Attack', faction: 'Cunning Hares', owned: false, level: 1, mindscape: 0, wEngine: 'Steel Cushion', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Nekomiya_Mana_Portrait.png', procRoles: [], procText: 'Same Element (Physical) or Faction', position: 'Main On-Field Skirmisher', focus: 'Backstab Agility & EX Swipes', bonusText: 'Quick Assist or Perfect Dodge increases EX Special DMG +35%' },
+      { id: 'nicole', name: 'Nicole', rarity: 'A', attribute: 'Ether', specialty: 'Support', faction: 'Cunning Hares', owned: true, level: 20, mindscape: 0, wEngine: 'The Vault', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Nicole_Demara_Portrait.png', procRoles: [], procText: 'Same Element (Ether) or Faction', position: 'Strong Off-Field Support', focus: 'Ether Black Hole & 40% DEF Shred', bonusText: 'Energy Field grants squad +25% Ether DMG to caught targets' },
+      { id: 'norma', name: 'Norma', rarity: 'S', attribute: 'Fire', specialty: 'Stun', faction: 'External Strategy Department', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Stun', 'Support'], procText: 'Same Element, Faction, Stun, or Support', position: 'Quick-Swap Stunner', focus: 'Target Daze & Burn Extension', bonusText: 'Daze accumulation +20%, Burn duration +3s', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/1/1d/Agent_Norma_Hollowell_Portrait.png' },
+      { id: 'orphie_magus', name: 'Orphie & Magus', rarity: 'S', attribute: 'Fire', specialty: 'Attack', faction: 'Obol Squad', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack', 'Support'], procText: 'Same Element, Faction, Attack, or Support', position: 'Main On-Field Dual Carry', focus: 'Synchronized Dual Strikes', bonusText: 'Fire ATK +20%, Dual Strike DMG +30%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/a/ae/Agent_Orphie_Magnusson_%26_Magus_Portrait.png' },
+      { id: 'pan_yinhu', name: 'Pan Yinhu', rarity: 'A', attribute: 'Physical', specialty: 'Defense', faction: 'Yunkui Summit', owned: true, level: 1, mindscape: 0, wEngine: '', procRoles: ['Defense', 'Stun', 'Rupture'], procText: 'Same Element, Faction, Defense, Stun, or Rupture', position: 'Defensive Anchor', focus: 'Barrier Absorb & Rupture HP Sustain', bonusText: 'Shield grants squad +25% Barrier and sustains Rupture HP scaling', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Pan_Yinhu_Portrait.png' },
+      { id: 'piper', name: 'Piper', rarity: 'A', attribute: 'Physical', specialty: 'Anomaly', faction: 'Sons of Calydon', owned: true, level: 1, mindscape: 0, wEngine: 'Roaring Ride', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Piper_Wheel_Portrait.png', procRoles: ['Anomaly'], procText: 'Same Element, Faction, or Anomaly', position: 'Anomaly Spin Driver', focus: 'Assault Buildup & Team DMG Buff', bonusText: 'When Power reaches 20 stacks, entire squad DMG +18%' },
+      { id: 'promeia', name: 'Promeia', rarity: 'S', attribute: 'Ice', specialty: 'Anomaly', faction: 'Krampus Compliance Authority', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly', 'Support'], procText: 'Same Element, Faction, Anomaly, or Support', position: 'Quick-Swap Anomaly', focus: 'Frost Infusion & Disorder Burst', bonusText: 'Ice Anomaly Buildup +30%, Disorder DMG +22%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/0/07/Agent_Promeia_Portrait.png' },
+      { id: 'pulchra', name: 'Pulchra', rarity: 'A', attribute: 'Physical', specialty: 'Stun', faction: 'Sons of Calydon', owned: true, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Pulchra_Fellini_Portrait.png', procRoles: ['Stun', 'Anomaly'], procText: 'Same Element, Faction, Stun, or Anomaly', position: 'Quick-Swap Stunner', focus: 'Assisted Stagger & Daze Procs', bonusText: 'Daze dealt to staggered targets +25%, Quick Assist DMG +20%' },
+      { id: 'qingyi', name: 'Qingyi', rarity: 'S', attribute: 'Electric', specialty: 'Stun', faction: 'New Eridu Public Security', owned: false, level: 1, mindscape: 0, wEngine: 'Ice-Jade Teapot', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Qingyi_Portrait.png', procRoles: ['Attack'], procText: 'Same Element, Faction, or Attack', position: 'On-Field Combo Stunner', focus: 'Subjugation +80% Stun Multiplier', bonusText: 'Basic Combo inflicts Subjugation, boosting Stun DMG multiplier +80%' },
+      { id: 'remielle_dan', name: 'Remielle Dan', rarity: 'S', attribute: 'Lumiflux', specialty: 'Anomaly', faction: 'Covenant of Dayat', owned: true, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly'], procText: 'Same Faction (Covenant of Dayat) or Anomaly ally', position: 'Quick-Swap Anomaly', focus: 'Lumiflux Resonance & Disorder', bonusText: 'Increases all squad members\' ATK based on Remielle\'s initial ATK and boosts Phase Flow Daze', strictFactionOrRole: true, avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/3/36/Agent_Remielle_Dan_Portrait.png' },
+      { id: 'rina', name: 'Rina', rarity: 'S', attribute: 'Electric', specialty: 'Support', faction: 'Victoria Housekeeping Co.', owned: false, level: 1, mindscape: 0, wEngine: 'Weeping Cradle', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Alexandrina_Sebastiane_Portrait.png', procRoles: [], procText: 'Same Element (Electric) or Faction', position: 'Strong Off-Field Support', focus: 'PEN Ratio Share & Shock Extension', bonusText: 'Shock duration +3s; Team Electric DMG +10% against Shocked foes' },
+      { id: 'roxy_ifrita_pryce', name: 'Roxy Ifrita Pryce', rarity: 'S', attribute: 'Wind', specialty: 'Stun', faction: 'Flint Workshop', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Stun', 'Armorer'], procText: 'Same Element, Faction, Stun, or Armorer', position: 'Quick-Swap Stunner', focus: 'Wind Gust Daze & SPD Boost', bonusText: 'Wind Daze +25%, Squad Movement Speed +15%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/c/c9/Agent_Roxy_Ifrita_Pryce_Portrait.png' },
+      { id: 'seed', name: 'Seed', rarity: 'S', attribute: 'Electric', specialty: 'Attack', faction: 'Obol Squad', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack'], procText: 'Requires 2nd Attack agent in squad', position: 'Main On-Field Vanguard', focus: 'Dual-DPS Electric Artillery & Flank Slashes', bonusText: 'With 2nd Attack Agent: Electric Pierce +20%, Vanguard ATK +25%', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Seed_Portrait.png' },
+      { id: 'seth', name: 'Seth', rarity: 'A', attribute: 'Electric', specialty: 'Defense', faction: 'New Eridu Public Security', owned: true, level: 1, mindscape: 0, wEngine: 'Peacekeeper - Specialized', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Seth_Lowell_Portrait.png', procRoles: ['Anomaly'], procText: 'Same Element, Faction, or Anomaly', position: 'Off-Field Parry Support', focus: '+100 Anomaly Proficiency Shield', bonusText: 'Shield recipient gains +100 Anomaly Proficiency for 20s' },
+      { id: 'sigrid', name: 'Sigrid', rarity: 'S', attribute: 'Ice', specialty: 'Attack', faction: 'Airspace Patrol Department', owned: true, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack', 'Support'], procText: 'Same Element, Faction, Attack, or Support', position: 'Main On-Field', focus: 'Ice CRIT Scythe Cleaves', bonusText: 'Ice CRIT DMG +35%, Frostbite effect duration +4s', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/b/b0/Agent_Sigrid_de_L%27Azur_Portrait.png' },
+      { id: 'soldier_0_anby', name: 'Soldier 0 - Anby', rarity: 'S', attribute: 'Electric', specialty: 'Attack', faction: 'Obol Squad', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Attack', 'Stun'], procText: 'Same Element, Faction, Attack, or Stun', position: 'Main On-Field', focus: 'Thunderbolt Blade & EX Flurry', bonusText: 'Electric DMG +25%, EX Special ATK +20%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/8/87/Agent_Soldier_0_-_Anby_Portrait.png' },
+      { id: 'soldier_11', name: 'Soldier 11', rarity: 'S', attribute: 'Fire', specialty: 'Attack', faction: 'Obol Squad', owned: true, level: 1, mindscape: 0, wEngine: 'The Brimstone', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Soldier_11_Portrait.png', procRoles: [], procText: 'Same Element (Fire) or Faction', position: 'Main On-Field', focus: 'Rhythmic Fire Sword Combos', bonusText: 'Fire DMG +20%; attacks against Stunned targets deal +10% DMG' },
+      { id: 'soukaku', name: 'Soukaku', rarity: 'A', attribute: 'Ice', specialty: 'Support', faction: 'Section 6', owned: true, level: 1, mindscape: 0, wEngine: 'Bashful Demon', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Soukaku_Portrait.png', procRoles: [], procText: 'Same Element (Ice) or Faction', position: 'Strong Off-Field Support', focus: '1000 ATK Transfer & Ice DMG Buff', bonusText: 'Fly the Flag transfers up to 1000 ATK; squad Ice DMG +20%' },
+      { id: 'starlight_billy', name: 'Starlight Billy', rarity: 'S', attribute: 'Physical', specialty: 'Rupture', faction: 'Cunning Hares', owned: false, level: 1, mindscape: 0, wEngine: 'Starlight Rider Faceplate', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Starlight_-_Billy_Kid_Portrait.png', procRoles: ['Stun', 'Defense', 'Support'], procText: 'Same Element, Faction, Stun, Defense, or Support', position: 'Main On-Field Sheer Force', focus: 'Max HP to Sheer DMG Conversion', bonusText: 'Each 1000 Max HP converts to Sheer Force; ignores enemy DEF', hpScaling: true },
+      { id: 'sunna', name: 'Sunna', rarity: 'S', attribute: 'Physical', specialty: 'Support', faction: 'Angels of Delusion', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Support', 'Defense'], procText: 'Same Element, Faction, Support, or Defense', position: 'Strong Off-Field Support', focus: 'Physical DMG & Shield ATK Buff', bonusText: 'Team Physical DMG +20%, Shielded allies gain +15% ATK', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/9/92/Agent_Sunna_Portrait.png' },
+      { id: 'trigger', name: 'Trigger', rarity: 'S', attribute: 'Electric', specialty: 'Stun', faction: 'Obol Squad', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Stun', 'Support'], procText: 'Same Element, Faction, Stun, or Support', position: 'Quick-Swap Stunner', focus: 'Ranged Stun & Vulnerability', bonusText: 'Electric Daze +25%, Critical Stun vulnerability +20%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/a/a2/Agent_Trigger_Portrait.png' },
+      { id: 'velina', name: 'Velina', rarity: 'S', attribute: 'Wind', specialty: 'Anomaly', faction: 'External Strategy Department', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly', 'Support'], procText: 'Same Element, Faction, Anomaly, or Support', position: 'Quick-Swap Anomaly', focus: 'Wind Gale & Disorder Driver', bonusText: 'Wind Anomaly Buildup +30%, Gale duration +3s', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/7/7b/Agent_Velina_Airgid_Portrait.png' },
+      { id: 'vivian', name: 'Vivian', rarity: 'S', attribute: 'Ether', specialty: 'Anomaly', faction: 'Mockingbird', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Anomaly', 'Support'], procText: 'Same Element, Faction, Anomaly, or Support', position: 'Quick-Swap Anomaly', focus: 'Ether Corruption & Disorder Burst', bonusText: 'Ether Buildup +25%, Disorder trigger bonus +20%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/1/1a/Agent_Vivian_Banshee_Portrait.png' },
+      { id: 'von_lycaon', name: 'Von Lycaon', rarity: 'S', attribute: 'Ice', specialty: 'Stun', faction: 'Victoria Housekeeping Co.', owned: false, level: 1, mindscape: 0, wEngine: 'The Restrained', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Von_Lycaon_Portrait.png', procRoles: [], procText: 'Same Element (Ice) or Faction', position: 'On-Field Charge Stunner', focus: 'Ice Daze Kick Flurry & Stun DMG Multiplier', bonusText: 'Stun attacks increase enemy Stun DMG multiplier by +35%' },
+      { id: 'yanagi', name: 'Yanagi', rarity: 'S', attribute: 'Electric', specialty: 'Anomaly', faction: 'Section 6', owned: false, level: 1, mindscape: 0, wEngine: '', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/4/4f/Agent_Tsukishiro_Yanagi_Portrait.png', procRoles: ['Anomaly'], procText: 'Same Element, Faction, or Anomaly', position: 'Main On-Field Anomaly Driver', focus: 'Polarity Disorder Detonation', bonusText: 'Disorder DMG +25%, Special Stance Electric Anomaly +35%' },
+      { id: 'ye_shunguang', name: 'Ye Shunguang', rarity: 'S', attribute: 'Honed Edge', specialty: 'Attack', faction: 'Yunkui Summit', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Support', 'Defense'], procText: 'Same Element, Faction, Support, or Defense', position: 'Main On-Field Carry', focus: 'Sword Intent Pierce & CRIT Slices', bonusText: 'Sword intent Pierce DMG +25%, CRIT DMG +30%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/0/05/Agent_Ye_Shunguang_Portrait.png' },
+      { id: 'yidhar', name: 'Yidhari', rarity: 'S', attribute: 'Ice', specialty: 'Rupture', faction: 'Spook Shack', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Rupture', 'Support'], procText: 'Same Element, Faction, Rupture, or Support', position: 'Quick-Swap Rupture', focus: 'Ice Rupture Shatter & Vulnerability', bonusText: 'Ice Rupture vulnerability +20%, Shatter DMG +25%', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/Yidhari_Portrait.png', hpScaling: true },
+      { id: 'yuzuha', name: 'Yuzuha', rarity: 'S', attribute: 'Physical', specialty: 'Support', faction: 'Spook Shack', owned: false, level: 1, mindscape: 0, wEngine: 'Metanukimorphosis', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/a/ae/Agent_Ukinami_Yuzuha_Portrait.png', procRoles: ['Anomaly', 'Support'], procText: 'Same Element, Faction, Anomaly, or Support', position: 'Strong Off-Field Support', focus: 'Anomaly Amplification & Squad Physical Buff', bonusText: 'Team Physical DMG +20%, squad Anomaly Buildup +25%' },
+      { id: 'zhao', name: 'Zhao', rarity: 'S', attribute: 'Ice', specialty: 'Defense', faction: 'Krampus Compliance Authority', owned: false, level: 1, mindscape: 0, wEngine: '', procRoles: ['Defense', 'Stun'], procText: 'Same Element, Faction, Defense, or Stun', position: 'Defensive Anchor', focus: 'Parry Counter & Squad Energy Restore', bonusText: 'Team DEF +25%, Perfect Parry restores 120 Energy to squad', avatarUrl: 'https://images.wikia.nocookie.net/zenless-zone-zero/images/e/e0/Agent_Zhao_Portrait.png' },
+      { id: 'zhu_yuan', name: 'Zhu Yuan', rarity: 'S', attribute: 'Ether', specialty: 'Attack', faction: 'New Eridu Public Security', owned: false, level: 1, mindscape: 0, wEngine: 'Riot Suppressor Mark VI', avatarUrl: 'https://zenless-zone-zero.fandom.com/wiki/Special:FilePath/Agent_Zhu_Yuan_Portrait.png', procRoles: ['Support'], procText: 'Same Element, Faction, or Support', position: 'Burst Punisher (Stun Windows)', focus: 'Ether Shell Shotgun Barrage', bonusText: 'EX Special / Chain / Ultimate grants +30% CRIT Rate for 10s' }
+    ];
+
+    const INITIAL_SAVED_TEAMS = [
+      {
+        id: 'team_fav_1',
+        name: 'Electric Belobog Overcharge',
+        category: 'Favorites',
+        agentIds: ['rina', 'anby', 'ben'],
+        notes: 'Active primary squad. Anby rapid Daze + Ben shield & crit buff + Rina PEN ratio share.'
+      },
+      {
+        id: 'team_via_1',
+        name: 'Cunning Hares Classic',
+        category: 'Viable',
+        agentIds: ['billy_kid', 'anby', 'nicole'],
+        notes: 'Full faction synergy. Nicole ether vortex DEF shred with Billy burst stagger damage.'
+      },
+      {
+        id: 'team_via_2',
+        name: 'Calydon Heavy Vanguard',
+        category: 'Viable',
+        agentIds: ['caesar', 'piper', 'lucy'],
+        notes: 'Triple Calydon faction activation. 1000 ATK Caesar barrier shield + Piper physical spin.'
+      }
+    ];
+
+    function loadSavedAgents() {
+      try {
+        const raw = localStorage.getItem('zzz_protocol_agents');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const initialMap = new Map(INITIAL_AGENTS.map(a => [a.id, a]));
+            parsed.forEach(p => {
+              const def = initialMap.get(p.id);
+              if (def) {
+                p.avatarUrl = def.avatarUrl;
+                p.name = def.name;
+                p.hpScaling = def.hpScaling || false;
+                p.isCarryArmorer = def.isCarryArmorer || false;
+                p.procRoles = def.procRoles || [];
+                p.procText = def.procText;
+                p.strictFactionOrRole = def.strictFactionOrRole || false;
+              }
+            });
+            const existingIds = new Set(parsed.map(a => a.id));
+            INITIAL_AGENTS.forEach(def => {
+              if (!existingIds.has(def.id)) parsed.push({ ...def });
+            });
+            return parsed.sort((a, b) => a.name.localeCompare(b.name));
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read saved agents from localStorage', e);
+      }
+      return INITIAL_AGENTS.map(a => ({ ...a })).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function loadSavedTeams() {
+      try {
+        const raw = localStorage.getItem('zzz_protocol_teams');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {
+        console.warn('Could not read saved squads from localStorage', e);
+      }
+      return INITIAL_SAVED_TEAMS.map(t => ({ ...t }));
+    }
+
+    function loadActiveTeamIds() {
+      try {
+        const raw = localStorage.getItem('zzz_protocol_active_ids');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {
+        console.warn('Could not read active deployment team from localStorage', e);
+      }
+      return ['rina', 'anby', 'ben'];
+    }
+
+    const savedTeamsInit = loadSavedTeams();
+    const state = {
+      agents: loadSavedAgents(),
+      teamIds: loadActiveTeamIds(),
+      savedTeams: savedTeamsInit,
+      activeTab: 'builder',
+      savedCategoryFilter: 'All',
+      recomOwnedOnly: true,
+      recomFocuses: [],
+      compareAgentAId: null,
+      compareAgentBId: null,
+      lockCandidateA: false,
+      lockCandidateB: false,
+      draggedPodIdx: null,
+      searchQuery: '',
+      attributeFilter: 'All',
+      specialtyFilter: 'All',
+      factionFilter: 'All',
+      ownershipFilter: 'all',
+      saveModalOpen: false
+    };
+
+    function persistData() {
+      try {
+        localStorage.setItem('zzz_protocol_agents', JSON.stringify(state.agents));
+        localStorage.setItem('zzz_protocol_teams', JSON.stringify(state.savedTeams));
+        localStorage.setItem('zzz_protocol_active_ids', JSON.stringify(state.teamIds));
+      } catch (e) {
+        console.warn('Failed to write updates to localStorage', e);
+      }
+    }
+
+    function getInitials(name) {
+      if (!name) return '??';
+      return name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase();
+    }
+
+    function renderAvatar(agent, size = 'md') {
+      const isS = agent.rarity === 'S';
+      const attr = ATTRIBUTES[agent.attribute] || ATTRIBUTES.Physical;
+      const sizeClasses = {
+        xs: 'w-6 h-6 text-[10px] rounded-md',
+        sm: 'w-8 h-8 text-xs rounded-lg',
+        md: 'w-11 h-11 text-sm rounded-xl',
+        lg: 'w-14 h-14 text-base rounded-2xl',
+        xl: 'w-20 h-20 sm:w-24 sm:h-24 text-lg rounded-2xl'
+      }[size] || 'w-11 h-11 text-sm rounded-xl';
+
+      const imgTag = agent.avatarUrl
+        ? `<img src="${agent.avatarUrl}" alt="${agent.name}" referrerpolicy="no-referrer" class="w-full h-full object-cover object-top" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy" />`
+        : '';
+      const fallbackDisplay = agent.avatarUrl ? 'style="display:none;"' : 'style="display:flex;"';
+
+      return `
+        <div class="relative flex-shrink-0 flex items-center justify-center font-black overflow-hidden border ${sizeClasses} ${isS ? 'border-amber-400/80 shadow-sm shadow-amber-500/20' : 'border-purple-400/70 shadow-sm shadow-purple-500/20'}" style="background: radial-gradient(circle at 35% 35%, ${attr.color}35, #09090b 85%);">
+          ${imgTag}
+          <div class="w-full h-full flex-col items-center justify-center relative select-none" ${fallbackDisplay}>
+            <span class="font-black tracking-tight" style="color: ${attr.color};">${getInitials(agent.name)}</span>
+            <div class="absolute bottom-0 inset-x-0 h-0.5" style="background-color: ${attr.color};"></div>
+          </div>
+          <span class="absolute top-0 right-0 px-1.5 py-0.5 text-[9px] font-black leading-tight rounded-bl ${isS ? 'bg-amber-500 text-zinc-950' : 'bg-purple-600 text-white'}">
+            ${agent.rarity}
+          </span>
+        </div>
+      `;
+    }
+
+    function evaluatePassiveActive(agent, teammates) {
+      if (!agent) return false;
+      const matchingAttr = teammates.filter(o => o.attribute === agent.attribute);
+      const matchingFaction = teammates.filter(o => o.faction === agent.faction);
+      const matchingRole = (agent.procRoles || []).length > 0
+        ? teammates.filter(o => (agent.procRoles || []).includes(o.specialty) || (o.isCarryArmorer && (agent.procRoles || []).includes('Attack')))
+        : [];
+
+      if (agent.strictFactionOrRole || agent.id === 'nangong_yu' || agent.id === 'dialyn' || agent.id === 'remielle_dan') {
+        return matchingFaction.length > 0 || matchingRole.length > 0;
+      }
+      if (agent.id === 'seed') {
+        return teammates.some(o => o.specialty === 'Attack' || o.isCarryArmorer);
+      }
+      return matchingAttr.length > 0 || matchingFaction.length > 0 || matchingRole.length > 0;
+    }
+
+    function evaluateSynergies(teamAgents) {
+      return teamAgents.map(agent => {
+        const teammates = teamAgents.filter(o => o.id !== agent.id);
+        const matchingAttr = teammates.filter(o => o.attribute === agent.attribute);
+        const matchingFaction = teammates.filter(o => o.faction === agent.faction);
+        const matchingRole = (agent.procRoles || []).length > 0
+          ? teammates.filter(o => (agent.procRoles || []).includes(o.specialty) || (o.isCarryArmorer && (agent.procRoles || []).includes('Attack')))
+          : [];
+
+        const isSynergyActive = evaluatePassiveActive(agent, teammates);
+        return { agent, isSynergyActive, matchingAttr, matchingFaction, matchingRole };
+      });
+    }
+
+    function isDamageCarryRole(role, agent = null) {
+      if (agent && (agent.id === 'claret_flint' || agent.isCarryArmorer)) return true;
+      return role === 'Attack' || role === 'Anomaly' || role === 'Rupture';
+    }
+
+    function getTeamMetricsForAgents(activeAgents) {
+      const synergies = evaluateSynergies(activeAgents);
+      const roles = activeAgents.map(a => a.specialty);
+      const attackCount = roles.filter(r => r === 'Attack').length;
+      const hasDps = activeAgents.some(a => isDamageCarryRole(a.specialty, a));
+      const hasStun = roles.includes('Stun');
+      const hasSupport = roles.includes('Support') || roles.includes('Defense') || activeAgents.some(a => a.specialty === 'Armorer' && a.id !== 'claret_flint');
+      const activeSynergiesCount = synergies.filter(s => s.isSynergyActive).length;
+      const synergyPercentage = activeAgents.length > 0 ? Math.round((activeSynergiesCount / activeAgents.length) * 100) : 0;
+      const uniqueElements = Array.from(new Set(activeAgents.map(a => a.attribute)));
+      const anomalyCount = roles.filter(r => r === 'Anomaly').length;
+      const canTriggerDisorder = anomalyCount >= 2 || (anomalyCount >= 1 && uniqueElements.length >= 2);
+      const isDualAttack = attackCount >= 2;
+
+      return {
+        activeAgents, synergies, hasDps, hasStun, hasSupport, isDualAttack,
+        synergyPercentage, activeSynergiesCount, uniqueElements, canTriggerDisorder
+      };
+    }
+
+    function getTeamMetrics() {
+      const activeAgents = state.teamIds.map(id => state.agents.find(a => a.id === id)).filter(Boolean);
+      return getTeamMetricsForAgents(activeAgents);
+    }
+
+    function getAssetMetrics() {
+      const total = state.agents.length;
+      const owned = state.agents.filter(a => a.owned).length;
+      const collectionRate = total > 0 ? ((owned / total) * 100).toFixed(1) : 0;
+      const midLevelCount = state.agents.filter(a => a.owned && a.level >= 20).length;
+      return { total, owned, collectionRate, midLevelCount };
+    }
+
+    function matchesFocusCriteria(cand, leadAgent, focusKey) {
+      const currentTeam = state.teamIds.map(id => state.agents.find(a => a.id === id)).filter(Boolean);
+      const currentRoles = currentTeam.map(a => a.specialty);
+      switch (focusKey) {
+        case 'trinity':
+          if (!currentRoles.includes('Stun') && cand.specialty === 'Stun') return true;
+          if (!currentRoles.includes('Support') && !currentRoles.includes('Defense') && ['Support', 'Defense'].includes(cand.specialty)) return true;
+          if (!currentTeam.some(a => isDamageCarryRole(a.specialty, a)) && isDamageCarryRole(cand.specialty, cand)) return true;
+          return false;
+        case 'disorder':
+          return cand.specialty === 'Anomaly' && cand.attribute !== leadAgent.attribute;
+        case 'mono':
+          return cand.attribute === leadAgent.attribute;
+        case 'offfield':
+          return cand.position && cand.position.includes('Off-Field');
+        case 'faction':
+          return cand.faction === leadAgent.faction;
+        default:
+          return true;
+      }
+    }
+
+    function getLeadRecommendations(leadAgent) {
+      if (!leadAgent) return { ranked: [] };
+
+      const candidatePool = state.agents.filter(a => {
+        if (a.id === leadAgent.id) return false;
+        if (state.recomOwnedOnly && !a.owned) return false;
+        if (state.recomFocuses.length > 0) {
+          const satisfiesAll = state.recomFocuses.every(f => matchesFocusCriteria(a, leadAgent, f));
+          if (!satisfiesAll) return false;
+        }
+        return true;
+      });
+
+      const scored = candidatePool.map(cand => {
+        let score = 20;
+        const reasons = [];
+
+        if (cand.attribute === leadAgent.attribute) {
+          if (!cand.strictFactionOrRole && !leadAgent.strictFactionOrRole) {
+            score += 30;
+            reasons.push(`Shared Element (${leadAgent.attribute})`);
+          } else {
+            score += 10;
+            reasons.push(`Shared Element (${leadAgent.attribute}) [Mono Elemental Damage]`);
+          }
+        }
+        if (cand.faction === leadAgent.faction) {
+          score += 35;
+          reasons.push(`Shared Faction (${leadAgent.faction})`);
+        }
+
+        if ((leadAgent.procRoles || []).includes(cand.specialty)) {
+          score += 35;
+          reasons.push(`Fulfills ${leadAgent.name}'s Core Skill (${cand.specialty})`);
+        }
+        if ((cand.procRoles || []).includes(leadAgent.specialty)) {
+          score += 35;
+          reasons.push(`Unlocked by ${leadAgent.name}'s role (${leadAgent.specialty})`);
+        }
+
+        if (cand.id === 'claret_flint') {
+          score += 25;
+          reasons.unshift('[Frontline Armorer Carry] Dual DPS & Weapon Tuning');
+        }
+
+        if (cand.id === 'lucia' && (leadAgent.hpScaling || leadAgent.id === 'starlight_billy' || leadAgent.specialty === 'Rupture')) {
+          score += 65;
+          reasons.unshift('[Max HP Battery] Lucia increases squad Max HP & Sheer Force');
+        }
+        if (leadAgent.id === 'lucia' && (cand.hpScaling || cand.id === 'starlight_billy' || cand.specialty === 'Rupture')) {
+          score += 65;
+          reasons.unshift('[HP-Scaling Carry] Converts Lucia\'s Max HP buffs directly into True Sheer DMG');
+        }
+
+        if (leadAgent.id === 'seed') {
+          if (cand.specialty === 'Attack' || cand.id === 'claret_flint') {
+            score += 90;
+            reasons.unshift('[Seed Dual-DPS] Vanguard Artillery Partner');
+          }
+        }
+
+        state.recomFocuses.forEach(f => {
+          if (f === 'trinity') {
+            score += 50;
+            reasons.unshift('[Trinity Active] Role completes squad balance');
+          } else if (f === 'disorder') {
+            score += 60;
+            reasons.unshift('[Disorder Active] Dual Anomaly Detonator');
+          } else if (f === 'mono') {
+            score += 60;
+            reasons.unshift(`[Mono Active] Pure Mono-${leadAgent.attribute}`);
+          } else if (f === 'offfield') {
+            score += 50;
+            reasons.unshift('[Off-Field Active] Dedicated Support Rotations');
+          } else if (f === 'faction') {
+            score += 60;
+            reasons.unshift(`[Faction Active] ${leadAgent.faction} Resonance`);
+          }
+        });
+
+        const matchPct = Math.min(99, score);
+        return { agent: cand, score, matchPct, reasons };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+      return { ranked: scored.slice(0, 4) };
+    }
+
+    function compareCandidateAdvantages(cand, rival, anchor, sub) {
+      if (!cand || !rival || !anchor || !sub) return [];
+      const advantages = [];
+
+      if (cand.rarity === 'S' && rival.rarity === 'A') {
+        advantages.push({
+          badge: 'Base Stats',
+          text: 'S-Rank foundation provides higher baseline ATK/HP stats and skill ceiling.'
+        });
+      } else if (cand.rarity === 'A' && rival.rarity === 'S') {
+        advantages.push({
+          badge: 'Accessible M6',
+          text: 'A-Rank investment is far easier to duplicate to Mindscape 6 (M6) capacity.'
+        });
+      }
+
+      const candMatchesAttr = (cand.attribute === anchor.attribute ? 1 : 0) + (cand.attribute === sub.attribute ? 1 : 0);
+      const rivalMatchesAttr = (rival.attribute === anchor.attribute ? 1 : 0) + (rival.attribute === sub.attribute ? 1 : 0);
+      if (candMatchesAttr > rivalMatchesAttr) {
+        advantages.push({
+          badge: 'Element Match',
+          text: `Shares ${cand.attribute} attribute with ${cand.attribute === anchor.attribute ? anchor.name : sub.name}, strengthening mono-element buildup.`
+        });
+      }
+
+      const candMatchesFaction = (cand.faction === anchor.faction ? 1 : 0) + (cand.faction === sub.faction ? 1 : 0);
+      const rivalMatchesFaction = (rival.faction === anchor.faction ? 1 : 0) + (rival.faction === sub.faction ? 1 : 0);
+      if (candMatchesFaction > rivalMatchesFaction) {
+        advantages.push({
+          badge: 'Faction Match',
+          text: `Shares "${cand.faction}" faction with ${cand.faction === anchor.faction ? anchor.name : sub.name}, establishing organizational synergy.`
+        });
+      }
+
+      const trioCand = [anchor, sub, cand];
+      const trioRival = [anchor, sub, rival];
+      const candMeetsTrinity = trioCand.some(a => isDamageCarryRole(a.specialty, a)) && trioCand.some(a => a.specialty === 'Stun') && trioCand.some(a => a.specialty === 'Support' || a.specialty === 'Defense');
+      const rivalMeetsTrinity = trioRival.some(a => isDamageCarryRole(a.specialty, a)) && trioRival.some(a => a.specialty === 'Stun') && trioRival.some(a => a.specialty === 'Support' || a.specialty === 'Defense');
+      if (candMeetsTrinity && !rivalMeetsTrinity) {
+        advantages.push({
+          badge: 'Role Balance',
+          text: `Completes the frontline Holy Trinity (${cand.name} as ${cand.id === 'claret_flint' ? 'Carry Armorer' : cand.specialty}) where ${rival.name} leaves a structural role gap.`
+        });
+      }
+
+      if (cand.id === 'claret_flint' && rival.id !== 'claret_flint') {
+        advantages.push({
+          badge: 'Hybrid Carry',
+          text: 'Functions as a primary damage carry with True Crit Scaling while providing Armorer stat tuning.'
+        });
+      }
+
+      const trioHasLucia = [anchor, sub].some(a => a.id === 'lucia');
+      const candHasHpScaling = cand.hpScaling || cand.id === 'starlight_billy' || cand.specialty === 'Rupture';
+      const rivalHasHpScaling = rival.hpScaling || rival.id === 'starlight_billy' || rival.specialty === 'Rupture';
+      
+      if (cand.id === 'lucia' && [anchor, sub].some(a => a.hpScaling || a.id === 'starlight_billy' || a.specialty === 'Rupture') && rival.id !== 'lucia') {
+        advantages.push({
+          badge: 'Lucia Max HP Engine',
+          text: 'Serves as dedicated HP battery and Sheer Force amplifier for team Rupture carries.'
+        });
+      } else if (trioHasLucia && candHasHpScaling && !rivalHasHpScaling) {
+        advantages.push({
+          badge: 'Lucia Synergy',
+          text: `Directly converts Lucia's Max HP amplification into True Sheer Damage; ${rival.name} does not.`
+        });
+      }
+
+      const hasAnomalyAnchor = anchor.specialty === 'Anomaly' || sub.specialty === 'Anomaly';
+      if (hasAnomalyAnchor && cand.specialty === 'Anomaly' && rival.specialty !== 'Anomaly') {
+        advantages.push({
+          badge: 'Disorder Driver',
+          text: `Supplies secondary anomaly application to trigger instant Disorder detonations with teammates.`
+        });
+      }
+
+      const candPassiveActive = evaluatePassiveActive(cand, [anchor, sub]);
+      const rivalPassiveActive = evaluatePassiveActive(rival, [anchor, sub]);
+      if (candPassiveActive && !rivalPassiveActive) {
+        advantages.push({
+          badge: 'Passive Chain',
+          text: `Fully activates their Core Skill Additional Ability in this squad, while ${rival.name}'s passive remains inactive.`
+        });
+      }
+
+      if (cand.position?.includes('Off-Field') && !rival.position?.includes('Off-Field')) {
+        advantages.push({
+          badge: 'Field Economy',
+          text: `Rotates out quickly to preserve combat uptime for primary carry ${anchor.name}.`
+        });
+      }
+
+      return advantages;
+    }
+
+    function analyzeCornerstoneCandidate(cand, anchor, sub) {
+      if (!cand || !anchor || !sub) return null;
+
+      const strengths = [];
+      const dealbreakers = [];
+      let fitScore = 50;
+
+      const trio = [anchor, sub, cand];
+      const isSeedInvolved = trio.some(a => a.id === 'seed');
+      const attackCount = trio.filter(a => a.specialty === 'Attack' || a.id === 'claret_flint').length;
+
+      const hasCarry = trio.some(a => isDamageCarryRole(a.specialty, a));
+      const hasStun = trio.some(a => a.specialty === 'Stun');
+      const hasSupportOrDef = trio.some(a => a.specialty === 'Support' || a.specialty === 'Defense' || (a.specialty === 'Armorer' && a.id !== 'claret_flint'));
+      const isHolyTrinityMet = hasCarry && hasStun && hasSupportOrDef;
+
+      if (isSeedInvolved) {
+        if (attackCount >= 2) {
+          fitScore += 35;
+          strengths.push({
+            label: '2nd Attack Agent — Dual-DPS Vanguard Active',
+            detail: 'Seed unlocks dual-artillery vanguard rotation, supercharging Pierce ratio and sustained damage.'
+          });
+        } else {
+          fitScore -= 40;
+          dealbreakers.push({
+            label: 'Missing 2nd Attack Agent — Dual-DPS Required',
+            detail: 'Seed critically requires a second Attack agent to trigger vanguard offensive multipliers.'
+          });
+        }
+      } else {
+        if (isHolyTrinityMet) {
+          fitScore += 25;
+          const carryAgent = trio.find(a => isDamageCarryRole(a.specialty, a));
+          const stunAgent = trio.find(a => a.specialty === 'Stun');
+          const suppAgent = trio.find(a => a.specialty === 'Support' || a.specialty === 'Defense' || a.specialty === 'Armorer');
+
+          strengths.push({
+            label: 'Completes Holy Trinity',
+            detail: `Frontline trinity achieved: Carry (${carryAgent?.name} [${carryAgent?.id === 'claret_flint' ? 'Carry Armorer' : carryAgent?.specialty}]) + Stagger (${stunAgent?.name}) + Utility (${suppAgent?.name} [${suppAgent?.specialty}]).`
+          });
+        } else {
+          const missing = [];
+          if (!hasCarry) missing.push('Carry (Attack/Anomaly/Rupture/Claret)');
+          if (!hasStun) missing.push('Stun Stagger');
+          if (!hasSupportOrDef) missing.push('Support/Defense Utility');
+          dealbreakers.push({
+            label: 'Holy Trinity Incomplete',
+            detail: `Trio lacks frontline synergy balance. Missing: ${missing.join(', ')}.`
+          });
+        }
+      }
+
+      if (cand.id === 'claret_flint') {
+        fitScore += 20;
+        strengths.push({
+          label: 'Designated Frontline Armorer Carry',
+          detail: 'Claret Flint provides primary on-field damage scaling through high-ratio True Crit while offering Armorer group ATK enhancements.'
+        });
+      }
+
+      const candIsHpScaler = cand.hpScaling || cand.id === 'starlight_billy' || cand.specialty === 'Rupture';
+      const anchorOrSubIsLucia = anchor.id === 'lucia' || sub.id === 'lucia';
+      const anchorOrSubIsHpScaler = [anchor, sub].some(a => a.hpScaling || a.id === 'starlight_billy' || a.specialty === 'Rupture');
+
+      if (candIsHpScaler && anchorOrSubIsLucia) {
+        fitScore += 30;
+        strengths.push({
+          label: 'Max HP-to-Sheer Damage Synergy',
+          detail: `${cand.name} converts Lucia's Ether Veil Max HP & Sheer Force buffs directly into DEF-ignoring True Sheer DMG, mitigating self-HP costs.`
+        });
+      } else if (cand.id === 'lucia' && anchorOrSubIsHpScaler) {
+        fitScore += 30;
+        const recipient = [anchor, sub].find(a => a.hpScaling || a.id === 'starlight_billy' || a.specialty === 'Rupture');
+        strengths.push({
+          label: 'Max HP Battery Provider',
+          detail: `Lucia's Ether Veil amplifies team Max HP and Sheer Force, directly multiplying ${recipient?.name}'s True Sheer DMG output.`
+        });
+      }
+
+      const candIsSustainProtector = cand.id === 'pan_yinhu' || cand.id === 'caesar' || cand.id === 'ben';
+      if (candIsHpScaler && [anchor, sub].some(a => a.id === 'pan_yinhu' || a.id === 'caesar' || a.id === 'ben')) {
+        fitScore += 18;
+        strengths.push({
+          label: 'Rupture High-Risk Sustain Buffer',
+          detail: `Teammate barrier shields protect ${cand.name} from falling below critical HP thresholds during self-HP draining combat rotations.`
+        });
+      } else if (candIsSustainProtector && anchorOrSubIsHpScaler) {
+        fitScore += 18;
+        const recipient = [anchor, sub].find(a => a.hpScaling || a.id === 'starlight_billy' || a.specialty === 'Rupture');
+        strengths.push({
+          label: 'Rupture HP Protection Provider',
+          detail: `${cand.name}'s barrier absorption protects ${recipient?.name} against lethal damage while in self-draining attack modes.`
+        });
+      }
+
+      if (cand.position && cand.position.includes('Off-Field')) {
+        fitScore += 18;
+        strengths.push({
+          label: `Position: ${cand.position}`,
+          detail: `Operates primarily off-field or via Quick Assists, keeping screen time open for ${anchor.name}.`
+        });
+      }
+
+      if (cand.focus) {
+        strengths.push({
+          label: `Focus: ${cand.focus}`,
+          detail: 'Executes specialized combat niche enhancing team rotations.'
+        });
+      }
+
+      const isCandPassiveActive = evaluatePassiveActive(cand, [anchor, sub]);
+
+      if (isCandPassiveActive) {
+        fitScore += 25;
+        strengths.push({
+          label: 'Core Skill Additional Ability Active',
+          detail: cand.bonusText
+        });
+      } else {
+        fitScore -= 22;
+        dealbreakers.push({
+          label: 'Dead Core Passive',
+          detail: `Fails to trigger Additional Ability: needs ${cand.procText || 'matching Element, Faction, or designated Role'}.`
+        });
+      }
+
+      if (evaluatePassiveActive(anchor, [sub, cand])) {
+        fitScore += 15;
+      }
+      if (evaluatePassiveActive(sub, [anchor, cand])) {
+        fitScore += 15;
+      }
+
+      const normalizedScore = Math.max(10, Math.min(99, fitScore));
+      return { 
+        agent: cand, 
+        score: normalizedScore, 
+        isHolyTrinityMet,
+        hasHpSynergy: ((candIsHpScaler && anchorOrSubIsLucia) || (cand.id === 'lucia' && anchorOrSubIsHpScaler)),
+        strengths, 
+        dealbreakers 
+      };
+    }
+
+    function getFilteredMatrixAgents() {
+      return state.agents
+        .filter(agent => {
+          const matchesSearch = agent.name.toLowerCase().includes(state.searchQuery.toLowerCase()) || agent.faction.toLowerCase().includes(state.searchQuery.toLowerCase());
+          const matchesAttr = state.attributeFilter === 'All' || agent.attribute === state.attributeFilter;
+          const matchesSpec = state.specialtyFilter === 'All' || agent.specialty === state.specialtyFilter;
+          const matchesFaction = state.factionFilter === 'All' || agent.faction === state.factionFilter;
+          const matchesOwner = state.ownershipFilter === 'all' ? true : state.ownershipFilter === 'owned' ? agent.owned : !agent.owned;
+          return matchesSearch && matchesAttr && matchesSpec && matchesFaction && matchesOwner;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function renderMatrixGridOnly() {
+      const grid = document.getElementById('agent-matrix-grid');
+      const badge = document.getElementById('matrix-count-badge');
+      if (!grid) return;
+
+      const filtered = getFilteredMatrixAgents();
+      if (badge) {
+        badge.innerText = `Showing ${filtered.length} of ${state.agents.length} agents`;
+      }
+
+      grid.innerHTML = filtered.map(agent => {
+        const inTeam = state.teamIds.includes(agent.id);
+        const attr = ATTRIBUTES[agent.attribute] || ATTRIBUTES.Physical;
+        const spec = SPECIALTIES[agent.specialty] || { color: 'text-zinc-300', bg: 'bg-zinc-800/60', border: 'border-zinc-700/60', icon: 'shield' };
+
+        return `
+          <div onclick="toggleTeamMember('${agent.id}')" class="relative cursor-pointer rounded-2xl border p-4 transition-all duration-200 select-none group flex flex-col justify-between ${
+            inTeam ? 'border-purple-500 bg-purple-950/30 shadow-xl shadow-purple-950/60 ring-2 ring-purple-500/90' : agent.owned ? 'border-zinc-800 bg-zinc-900/90 hover:border-zinc-700 hover:bg-zinc-900' : 'border-zinc-800/50 bg-zinc-950/40 opacity-70 hover:opacity-100 hover:border-zinc-700'
+          }">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 ${attr.bg} ${attr.text} border ${attr.border}">
+                    ${getSvg('zap', 'w-3 h-3')}
+                    <span>${agent.attribute}</span>
+                  </span>
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 ${spec.bg} ${spec.color} border ${spec.border}">
+                    ${getSvg(spec.icon, 'w-3 h-3')}
+                    <span>${agent.specialty}</span>
+                  </span>
+                </div>
+                ${inTeam ? '<span class="text-[10px] font-black bg-purple-500 text-white px-2.5 py-0.5 rounded-full shadow-sm animate-pulse tracking-wide">IN SQUAD</span>' : agent.owned ? `<span class="text-xs font-mono font-bold text-cyan-300">Lv.${agent.level}</span>` : '<span class="text-[10px] text-zinc-500 italic">Unowned</span>'}
+              </div>
+
+              <div class="flex items-center gap-4">
+                ${renderAvatar(agent, 'xl')}
+                <div class="flex-1 min-w-0 space-y-1.5">
+                  <h4 class="font-black text-base sm:text-lg text-white leading-tight truncate" title="${agent.name}">
+                    ${agent.name}
+                  </h4>
+                  <div class="space-y-1 text-xs">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">Rank:</span>
+                      <span class="font-mono font-black ${agent.rarity === 'S' ? 'text-amber-400' : 'text-purple-400'}">${agent.rarity}-Rank</span>
+                      <span class="text-zinc-600">•</span>
+                      <span class="text-[11px] font-mono font-bold text-purple-300">M${agent.mindscape || 0}</span>
+                    </div>
+                    <div class="pt-0.5">
+                      <span class="text-[11px] text-zinc-400 leading-snug block truncate" title="${agent.faction}">
+                        ${agent.faction}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              ${agent.position || agent.focus ? `
+                <div class="bg-zinc-950/80 p-2 rounded-xl border border-zinc-800/80 text-[11px] text-zinc-300 space-y-0.5">
+                  ${agent.position ? `<div class="truncate"><strong class="text-amber-400 font-semibold text-[10px] uppercase">Pos:</strong> ${agent.position}</div>` : ''}
+                  ${agent.focus ? `<div class="truncate text-zinc-400 text-[10px]"><strong class="text-cyan-400 font-semibold uppercase">Focus:</strong> ${agent.focus}</div>` : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            <div class="mt-3 pt-2.5 border-t border-zinc-800 flex items-center justify-between text-[11px]">
+              ${agent.owned ? `
+                <span class="text-zinc-400 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span class="text-emerald-400 font-semibold">Acquired</span>
+                </span>
+                <span class="text-zinc-500 font-mono text-[10px] truncate max-w-[120px]">${agent.wEngine || 'No W-Engine'}</span>
+              ` : `
+                <span class="text-zinc-500 italic text-[10px]">Not in Roster</span>
+                <button type="button" onclick="event.stopPropagation(); toggleOwnership('${agent.id}');" class="text-purple-400 hover:text-purple-300 hover:underline font-bold text-[11px]">Mark Acquired</button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleMatrixSearch(query) {
+      state.searchQuery = query;
+      renderMatrixGridOnly();
+    }
+
+    function handleMatrixFilter(key, val) {
+      state[key] = val;
+      renderMatrixGridOnly();
+    }
+
+    function resetMatrixFilters() {
+      state.searchQuery = '';
+      state.attributeFilter = 'All';
+      state.specialtyFilter = 'All';
+      state.factionFilter = 'All';
+      state.ownershipFilter = 'all';
+
+      const searchInput = document.getElementById('matrix-search-input');
+      const attrSelect = document.getElementById('matrix-attribute-select');
+      const specSelect = document.getElementById('matrix-specialty-select');
+      const facSelect = document.getElementById('matrix-faction-select');
+      const ownSelect = document.getElementById('matrix-ownership-select');
+
+      if (searchInput) searchInput.value = '';
+      if (attrSelect) attrSelect.value = 'All';
+      if (specSelect) specSelect.value = 'All';
+      if (facSelect) facSelect.value = 'All';
+      if (ownSelect) ownSelect.value = 'all';
+
+      renderMatrixGridOnly();
+    }
+
+    function renderBuilderTab(teamMetrics) {
+      const anchorAgent = teamMetrics.activeAgents[0] || null;
+      const subAgent = teamMetrics.activeAgents[1] || null;
+      const { ranked } = getLeadRecommendations(anchorAgent);
+
+      const podsHtml = [0, 1, 2].map(slotIdx => {
+        const agent = teamMetrics.activeAgents[slotIdx];
+        const syn = agent ? teamMetrics.synergies.find(s => s.agent.id === agent.id) : null;
+        const attr = agent ? (ATTRIBUTES[agent.attribute] || ATTRIBUTES.Physical) : null;
+
+        if (agent) {
+          let activeProcText = '';
+          if (syn.isSynergyActive) {
+            const triggers = [];
+            if (syn.matchingAttr.length > 0 && !agent.strictFactionOrRole) {
+              triggers.push(`Element Match (${agent.attribute} via ${syn.matchingAttr.map(p => p.name).join(', ')})`);
+            }
+            if (syn.matchingFaction.length > 0) triggers.push(`Faction Match (${agent.faction} via ${syn.matchingFaction.map(p => p.name).join(', ')})`);
+            if (syn.matchingRole.length > 0) {
+              const rolesMatched = Array.from(new Set(syn.matchingRole.map(p => p.specialty))).join('/');
+              triggers.push(`Role Match (${rolesMatched} via ${syn.matchingRole.map(p => p.name).join(', ')})`);
+            }
+            if (agent.id === 'seed' && syn.matchingRole.length > 0) {
+              triggers.push(`Vanguard Partner (${syn.matchingRole.map(p => p.name).join(', ')})`);
+            }
+            activeProcText = triggers.join(' • ');
+          } else {
+            activeProcText = `Inactive — Needs ${agent.procText || 'Matching Element, Faction, or Role'}`;
+          }
+
+          return `
+            <div 
+              id="pod-slot-${slotIdx}"
+              draggable="true" 
+              ondragstart="handlePodDragStart(event, ${slotIdx})" 
+              ondragover="handlePodDragOver(event, ${slotIdx})" 
+              ondragleave="handlePodDragLeave(event, ${slotIdx})" 
+              ondrop="handlePodDrop(event, ${slotIdx})" 
+              class="relative rounded-xl border p-4 transition-all min-h-[235px] flex flex-col justify-between cursor-move group/card ${attr.bg} ${syn.isSynergyActive ? 'border-purple-500/70 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30' : 'border-zinc-700'}"
+            >
+              <div class="flex items-center justify-between w-full mb-2">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-zinc-500 group-hover/card:text-purple-400 transition" title="Drag to reorder">
+                    ${getSvg('gripVertical', 'w-3.5 h-3.5')}
+                  </span>
+                  <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-800 flex items-center gap-1">
+                    ${slotIdx === 0 ? '<span class="text-amber-400 font-black">★ ANCHOR / POINT</span>' : slotIdx === 1 ? '<span class="text-cyan-400 font-bold">◆ SUB / SECONDS</span>' : '<span class="text-purple-400 font-bold">● ASSIST / FLEX</span>'}
+                  </span>
+                </div>
+                <button onclick="removeTeamMember(${slotIdx})" class="text-zinc-500 hover:text-red-400 p-1 rounded hover:bg-zinc-950/50 transition" title="Remove agent">
+                  ${getSvg('x', 'w-4 h-4')}
+                </button>
+              </div>
+
+              <div class="space-y-3">
+                <div class="flex items-start gap-3">
+                  ${renderAvatar(agent, 'lg')}
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="text-base font-bold text-white truncate leading-snug">${agent.name}</h3>
+                      <span class="text-[10px] font-bold px-1.5 py-0.2 rounded ${agent.rarity === 'S' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-purple-500/20 text-purple-300 border border-purple-500/40'}">${agent.rarity}</span>
+                    </div>
+                    <p class="text-xs text-zinc-400 mt-0.5 flex items-center gap-1.5">
+                      <span class="${attr.text}">${agent.attribute}</span>
+                      <span class="text-zinc-600">•</span>
+                      <span class="${SPECIALTIES[agent.specialty]?.color || 'text-zinc-300'}">${agent.specialty}</span>
+                    </p>
+                    <span class="text-[11px] text-zinc-400 block truncate" title="${agent.faction}">${agent.faction}</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-xs font-bold text-cyan-400 font-mono">Lv.${agent.level}</span>
+                    <span class="text-[10px] text-purple-400 block font-semibold">M${agent.mindscape || 0}</span>
+                  </div>
+                </div>
+
+                <div class="p-2.5 rounded-lg border text-xs ${syn.isSynergyActive ? 'bg-emerald-950/30 border-emerald-500/40 text-emerald-300' : 'bg-rose-950/30 border-rose-500/40 text-rose-300'}">
+                  <div class="flex items-center gap-1.5 font-semibold">
+                    ${syn.isSynergyActive ? `${getSvg('checkCircle', 'w-4 h-4 text-emerald-400')}<span>Synergy Active</span>` : `${getSvg('alertTriangle', 'w-4 h-4 text-rose-400')}<span>Passive Inactive</span>`}
+                  </div>
+                  <div class="text-[11px] text-zinc-300 mt-1.5 space-y-1">
+                    <p class="${syn.isSynergyActive ? 'text-emerald-300' : 'text-rose-300'} leading-tight">
+                      <span class="font-bold ${syn.isSynergyActive ? 'text-purple-400' : 'text-rose-400'}">Proc:</span> 
+                      <span class="${syn.isSynergyActive ? 'text-emerald-300 font-medium' : 'text-rose-300/90'}">${activeProcText}</span>
+                    </p>
+                    <p class="leading-tight ${syn.isSynergyActive ? 'text-emerald-300' : 'text-zinc-400'}">
+                      <span class="font-bold ${syn.isSynergyActive ? 'text-emerald-400' : 'text-red-500'}">Bonus:</span> 
+                      <span class="${syn.isSynergyActive ? 'text-zinc-200' : 'text-zinc-400 italic'}">${agent.bonusText}</span>
+                    </p>
+                    ${agent.position ? `<p class="text-zinc-300 leading-tight pt-0.5"><span class="font-bold text-amber-400">Position:</span> ${agent.position}</p>` : ''}
+                    ${agent.focus ? `<p class="text-zinc-300 leading-tight"><span class="font-bold text-cyan-400">Focus:</span> ${agent.focus}</p>` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-500">
+                <span class="truncate max-w-[200px]">W-Engine: ${agent.wEngine || 'None'}</span>
+                <span class="text-purple-400 font-semibold">${slotIdx === 0 ? 'Point Lead' : slotIdx === 1 ? 'Sub Specialist' : 'Assist Support'}</span>
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div 
+            id="pod-slot-${slotIdx}"
+            ondragover="handlePodDragOver(event, ${slotIdx})" 
+            ondragleave="handlePodDragLeave(event, ${slotIdx})" 
+            ondrop="handlePodDrop(event, ${slotIdx})" 
+            class="relative rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 p-4 transition-all min-h-[235px] flex flex-col justify-between items-center text-center"
+          >
+            <span class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 bg-zinc-950/60 px-2 py-0.5 rounded border border-zinc-800 self-start">
+              ${slotIdx === 0 ? '★ Slot 1 (Anchor)' : slotIdx === 1 ? '◆ Slot 2 (Sub)' : '● Slot 3 (Assist)'}
+            </span>
+            <div class="py-6">
+              <div class="text-zinc-600 mb-2 flex justify-center">${getSvg('plus', 'w-8 h-8')}</div>
+              <p class="text-xs text-zinc-500 font-medium">${slotIdx === 0 ? 'Select Anchor Agent' : slotIdx === 1 ? 'Select Sub Agent' : 'Select Assist or Compare Below'}</p>
+            </div>
+            <div class="text-[10px] text-zinc-600">${slotIdx === 0 ? 'Foundation carry' : slotIdx === 1 ? 'Secondary foundation' : 'Completes squad'}</div>
+          </div>
+        `;
+      }).join('');
+
+      let cornerstoneSectionHtml = '';
+      if (anchorAgent && subAgent) {
+        const eligibleCandidates = state.agents
+          .filter(a => a.id !== anchorAgent.id && a.id !== subAgent.id)
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        if (!state.compareAgentAId || state.compareAgentAId === anchorAgent.id || state.compareAgentAId === subAgent.id) {
+          state.compareAgentAId = eligibleCandidates[0]?.id || null;
+        }
+        if (!state.compareAgentBId || state.compareAgentBId === anchorAgent.id || state.compareAgentBId === subAgent.id || state.compareAgentBId === state.compareAgentAId) {
+          state.compareAgentBId = eligibleCandidates.find(a => a.id !== state.compareAgentAId)?.id || eligibleCandidates[1]?.id || null;
+        }
+
+        const agentA = state.agents.find(a => a.id === state.compareAgentAId);
+        const agentB = state.agents.find(a => a.id === state.compareAgentBId);
+
+        const analysisA = analyzeCornerstoneCandidate(agentA, anchorAgent, subAgent);
+        const analysisB = analyzeCornerstoneCandidate(agentB, anchorAgent, subAgent);
+
+        const advantagesA = compareCandidateAdvantages(agentA, agentB, anchorAgent, subAgent);
+        const advantagesB = compareCandidateAdvantages(agentB, agentA, anchorAgent, subAgent);
+
+        const renderCandidateCard = (analysis, candSlot, rivalAnalysis, advantages) => {
+          if (!analysis) return '<div class="p-4 text-xs text-zinc-500">No candidate selected.</div>';
+          const ag = analysis.agent;
+          const rival = rivalAnalysis?.agent;
+          const attr = ATTRIBUTES[ag.attribute] || ATTRIBUTES.Physical;
+          const isCurrentSlot3 = state.teamIds[2] === ag.id;
+          const isLocked = candSlot === 'A' ? state.lockCandidateA : state.lockCandidateB;
+
+          return `
+            <div class="bg-zinc-950/90 border ${isLocked ? 'border-amber-500/70 shadow-lg shadow-amber-950/20' : 'border-zinc-800'} rounded-xl p-4 flex flex-col justify-between space-y-4 shadow-lg hover:border-purple-500/40 transition">
+              <div class="space-y-3">
+                <div class="flex items-center justify-between gap-2 pb-2 border-b border-zinc-800">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${candSlot === 'A' ? 'bg-cyan-950 text-cyan-400 border border-cyan-500/40' : 'bg-purple-950 text-purple-400 border border-purple-500/40'}">
+                      Candidate ${candSlot}
+                    </span>
+                    <span class="text-xs font-mono font-black ${analysis.score >= 75 ? 'text-emerald-400' : analysis.score >= 50 ? 'text-cyan-400' : 'text-amber-400'}">
+                      ${analysis.score}% Fit
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${
+                      analysis.isHolyTrinityMet ? 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40' : 'bg-zinc-900 text-zinc-500 border-zinc-800'
+                    }">
+                      Trinity: ${analysis.isHolyTrinityMet ? 'Met ✓' : 'Unmet ✗'}
+                    </span>
+                    ${analysis.hasHpSynergy ? `
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded border bg-rose-950/60 text-rose-300 border-rose-500/40 flex items-center gap-1">
+                        ${getSvg('heart', 'w-3 h-3 text-rose-400')}
+                        HP Scaler Buff
+                      </span>
+                    ` : ''}
+                  </div>
+
+                  <div class="flex items-center gap-1.5">
+                    <button onclick="toggleLockCandidate('${candSlot}')" class="px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 border transition ${
+                      isLocked ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-white'
+                    }" title="${isLocked ? 'Pinned: Protected from recommendations' : 'Pin candidate'}">
+                      ${getSvg(isLocked ? 'lock' : 'unlock', 'w-3 h-3')}
+                      <span>${isLocked ? 'Pinned' : 'Pin'}</span>
+                    </button>
+
+                    <select onchange="setCornerstoneCandidate('${candSlot}', this.value)" class="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-purple-500 font-sans">
+                      ${eligibleCandidates.map(c => `
+                        <option value="${c.id}" ${c.id === ag.id ? 'selected' : ''}>${c.name} (${c.attribute} • ${c.specialty})</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  ${renderAvatar(ag, 'md')}
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <h4 class="font-bold text-sm text-white truncate">${ag.name}</h4>
+                      <span class="text-[10px] font-bold px-1 rounded ${ag.rarity === 'S' ? 'bg-amber-500/20 text-amber-300' : 'bg-purple-500/20 text-purple-300'}">${ag.rarity}</span>
+                    </div>
+                    <div class="text-[11px] text-zinc-400 flex items-center gap-1 mt-0.5">
+                      <span class="${attr.text} font-bold">${ag.attribute}</span>
+                      <span>•</span>
+                      <span class="${SPECIALTIES[ag.specialty]?.color || 'text-zinc-300'} font-semibold">${ag.specialty}</span>
+                    </div>
+                    <div class="text-[10px] text-zinc-500 truncate mt-0.5">${ag.position || 'Generalist'} • ${ag.focus || 'Combat'}</div>
+                  </div>
+                </div>
+
+                <!-- Direct Contender Comparison Subsection -->
+                <div class="space-y-1.5 pt-1">
+                  <div class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+                    ${getSvg('award', 'w-3.5 h-3.5 text-cyan-400')}
+                    Advantages vs Contender (${rival ? rival.name : 'Counterpart'})
+                  </div>
+                  ${advantages.length === 0 ? `
+                    <div class="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800 text-[11px] text-zinc-400 italic">
+                      Evenly balanced with ${rival ? rival.name : 'counterpart'} across baseline role parameters.
+                    </div>
+                  ` : `
+                    <div class="space-y-1">
+                      ${advantages.map(adv => `
+                        <div class="p-2 rounded-lg bg-cyan-950/20 border border-cyan-500/20 text-xs">
+                          <span class="font-bold text-cyan-300 text-[11px] block">★ ${adv.badge}</span>
+                          <span class="text-zinc-300 text-[10px] mt-0.5 block leading-snug">${adv.text}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  `}
+                </div>
+
+                <!-- Strengths Section -->
+                <div class="space-y-1.5 pt-1">
+                  <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                    ${getSvg('sparkles', 'w-3 h-3')}
+                    Squad Strengths
+                  </div>
+                  <div class="space-y-1">
+                    ${analysis.strengths.map(s => `
+                      <div class="p-2 rounded-lg bg-emerald-950/25 border border-emerald-500/20 text-xs">
+                        <span class="font-bold text-emerald-300 text-[11px] block">✓ ${s.label}</span>
+                        <span class="text-zinc-300 text-[10px] mt-0.5 block leading-snug">${s.detail}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <!-- Bottlenecks / Dealbreakers Section -->
+                <div class="space-y-1.5 pt-1">
+                  <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                    ${getSvg('alertTriangle', 'w-3 h-3')}
+                    Tactical Bottlenecks & Dealbreakers
+                  </div>
+                  ${analysis.dealbreakers.length === 0 ? `
+                    <div class="p-2 rounded-lg bg-zinc-900/60 border border-zinc-800 text-[11px] text-zinc-400 flex items-center gap-1.5">
+                      ${getSvg('check', 'w-3.5 h-3.5 text-emerald-400')}
+                      <span>Zero notable role bottlenecks or passive clashes detected.</span>
+                    </div>
+                  ` : `
+                    <div class="space-y-1">
+                      ${analysis.dealbreakers.map(d => `
+                        <div class="p-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-xs">
+                          <span class="font-bold text-amber-300 text-[11px] block">⚠ ${d.label}</span>
+                          <span class="text-zinc-300 text-[10px] mt-0.5 block leading-snug">${d.detail}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  `}
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-zinc-800">
+                <button onclick="deployCornerstoneCandidate('${ag.id}')" ${isCurrentSlot3 ? 'disabled' : ''} class="w-full py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                  isCurrentSlot3
+                    ? 'bg-purple-950/60 border border-purple-500/40 text-purple-300'
+                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/20'
+                }">
+                  ${isCurrentSlot3 ? `${getSvg('check', 'w-3.5 h-3.5')} Currently in Slot 3` : `${getSvg('users', 'w-3.5 h-3.5')} Slot into Assist (Slot 3)`}
+                </button>
+              </div>
+            </div>
+          `;
+        };
+
+        cornerstoneSectionHtml = `
+          <div class="bg-gradient-to-r from-cyan-950/30 via-zinc-900/80 to-purple-950/30 border border-cyan-500/30 rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  ${getSvg('scale', 'w-5 h-5')}
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    Cornerstone Comparison
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      Benchmarking vs [★ ${anchorAgent.name} + ◆ ${subAgent.name}]
+                    </span>
+                  </h3>
+                  <p class="text-xs text-zinc-400 mt-0.5">
+                    Compare any two candidates side-by-side to evaluate Holy Trinity balance, passive chains, HP scaling synergies, and direct contender advantages.
+                  </p>
+                </div>
+              </div>
+              <div class="text-[11px] text-zinc-500 font-mono">Assessing Slot 3 Fit</div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${renderCandidateCard(analysisA, 'A', analysisB, advantagesA)}
+              ${renderCandidateCard(analysisB, 'B', analysisA, advantagesB)}
+            </div>
+          </div>
+        `;
+      } else {
+        cornerstoneSectionHtml = `
+          <div class="p-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+            <div class="flex items-center gap-2">
+              <span class="text-cyan-400">${getSvg('scale', 'w-4 h-4')}</span>
+              <span><strong>Cornerstone Comparison Locked:</strong> Select both an <strong>Anchor (Slot 1)</strong> and <strong>Sub (Slot 2)</strong> above to pit two candidates head-to-head.</span>
+            </div>
+            <span class="text-[11px] text-zinc-500 font-mono">Requires 2/3 Squad Selected</span>
+          </div>
+        `;
+      }
+
+      const isDisorderActive = state.recomFocuses.includes('disorder');
+      const isMonoActive = state.recomFocuses.includes('mono');
+
+      const recommendationSectionHtml = anchorAgent ? `
+        <div class="bg-gradient-to-r from-purple-950/30 via-zinc-900/60 to-cyan-950/30 border border-purple-500/30 rounded-2xl p-5 shadow-xl space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+            <div class="flex items-center gap-2.5">
+              <div class="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                ${getSvg('lightbulb', 'w-5 h-5')}
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  Tactical Squad Recommendations
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Anchor: ${anchorAgent.name} (${anchorAgent.attribute} • ${anchorAgent.specialty})
+                  </span>
+                </h3>
+                <p class="text-xs text-zinc-400 mt-0.5">Top compatible squad members curated to trigger ${anchorAgent.name}'s Additional Ability and fulfill combat roles.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800">
+              <span class="text-zinc-400 text-[11px]">Scope:</span>
+              <button onclick="state.recomOwnedOnly = !state.recomOwnedOnly; renderApp();" class="font-bold flex items-center gap-1.5 ${state.recomOwnedOnly ? 'text-emerald-400' : 'text-purple-400'}">
+                <span class="w-2 h-2 rounded-full ${state.recomOwnedOnly ? 'bg-emerald-400' : 'bg-purple-400'}"></span>
+                ${state.recomOwnedOnly ? 'Acquired Only' : 'All 58 Agents (Theorycraft)'}
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-zinc-950/80 p-3 rounded-xl border border-zinc-800/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                ${getSvg('target', 'w-3.5 h-3.5 text-purple-400')}
+                Focused Recommendations • Multi-Filter (Mutually Exclusive Dynamics)
+              </span>
+              ${state.recomFocuses.length > 0 ? `
+                <button onclick="state.recomFocuses = []; renderApp();" class="text-[10px] text-zinc-400 hover:text-white underline">
+                  Clear All Filters (${state.recomFocuses.length})
+                </button>
+              ` : '<span class="text-[10px] text-zinc-500 italic">Select one or more filters to narrow candidates</span>'}
+            </div>
+            <div class="flex flex-wrap gap-2">
+              ${[
+                { id: 'trinity', label: 'Fill Trinity Role' },
+                { id: 'disorder', label: 'Anomaly Disorder', disabled: isMonoActive, disabledReason: 'Mutually exclusive with Mono-Element focus' },
+                { id: 'mono', label: `Mono-${anchorAgent.attribute}`, disabled: isDisorderActive, disabledReason: 'Mutually exclusive with Anomaly Disorder focus' },
+                { id: 'offfield', label: 'Off-Field Specialist' },
+                { id: 'faction', label: 'Faction Resonance' }
+              ].map(p => {
+                const isAct = state.recomFocuses.includes(p.id);
+                const isDis = p.disabled;
+
+                return `
+                  <button onclick="${isDis ? '' : `toggleRecomFocus('${p.id}')`}" ${isDis ? 'disabled' : ''} title="${isDis ? p.disabledReason : ''}" class="px-2.5 py-1 rounded-lg text-xs font-semibold transition border flex items-center gap-1.5 ${
+                    isDis
+                      ? 'bg-zinc-950/40 border-zinc-800/40 text-zinc-600 cursor-not-allowed line-through'
+                      : isAct
+                      ? 'bg-purple-600 border-purple-400 text-white shadow shadow-purple-600/30 ring-1 ring-purple-400'
+                      : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white'
+                  }">
+                    <span>${p.label}</span>
+                    ${isAct ? `<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>` : ''}
+                    ${isDis ? `<span class="text-[9px] text-zinc-600 font-mono">✕</span>` : ''}
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <div>
+            <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2.5 flex items-center justify-between">
+              <span>Top Synergistic Teammates</span>
+              <span class="text-zinc-500 font-normal">Click button to populate next open pod</span>
+            </div>
+
+            ${ranked.length === 0 ? `
+              <div class="p-6 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/60 text-center text-xs text-zinc-400 space-y-1">
+                <p class="font-bold text-amber-400">No agents meet all ${state.recomFocuses.length} active focus criteria simultaneously.</p>
+                <p class="text-[11px] text-zinc-500">Try toggling off one of the focused filters above to widen your candidate search.</p>
+              </div>
+            ` : `
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                ${ranked.map(rec => {
+                  const ag = rec.agent;
+                  const attr = ATTRIBUTES[ag.attribute] || ATTRIBUTES.Physical;
+                  const isAlreadyInTeam = state.teamIds.includes(ag.id);
+                  const addLabel = state.teamIds.length < 2 ? '+ Add to Slot 2 (Sub)' : '+ Add to Slot 3 (Assist)';
+
+                  return `
+                    <div class="bg-zinc-950/80 border border-zinc-800/90 hover:border-purple-500/60 rounded-xl p-3 transition flex flex-col justify-between space-y-2.5 group">
+                      <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                          <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            ${rec.matchPct}% Match
+                          </span>
+                          <span class="text-[10px] ${attr.text} font-bold">${ag.attribute}</span>
+                        </div>
+
+                        <div class="flex items-center gap-2.5">
+                          ${renderAvatar(ag, 'sm')}
+                          <div class="min-w-0 flex-1">
+                            <h4 class="font-bold text-xs text-white truncate leading-tight">${ag.name}</h4>
+                            <p class="text-[10px] text-zinc-400 mt-0.5 truncate">${ag.faction}</p>
+                            <p class="text-[10px] ${SPECIALTIES[ag.specialty]?.color || 'text-zinc-400'} font-semibold">${ag.specialty}</p>
+                          </div>
+                        </div>
+
+                        <div class="mt-2 space-y-1">
+                          ${rec.reasons.slice(0, 2).map(r => `
+                            <div class="text-[10px] text-zinc-300 flex items-start gap-1 leading-tight">
+                              <span class="text-emerald-400 flex-shrink-0">✓</span>
+                              <span class="truncate">${r}</span>
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+
+                      <button onclick="addRecommendedAgent('${ag.id}')" ${isAlreadyInTeam ? 'disabled' : ''} class="w-full py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 ${
+                        isAlreadyInTeam
+                          ? 'bg-zinc-900 text-zinc-600 border border-zinc-800'
+                          : 'bg-purple-600/90 hover:bg-purple-500 text-white shadow shadow-purple-600/20'
+                      }">
+                        ${isAlreadyInTeam ? 'In Squad' : `${getSvg('plus', 'w-3 h-3')} ${addLabel}`}
+                      </button>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+        </div>
+      ` : `
+        <div class="p-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 flex items-center justify-between text-xs text-zinc-400">
+          <div class="flex items-center gap-2">
+            <span class="text-purple-400">${getSvg('lightbulb', 'w-4 h-4')}</span>
+            <span>Assign an agent to <strong>Slot 1 (Anchor)</strong> to unlock intelligent compatibility recommendations.</span>
+          </div>
+        </div>
+      `;
+
+      return `
+        <div class="bg-gradient-to-b from-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-800 mb-6">
+            <div>
+              <h2 class="text-xl font-black tracking-wide text-white uppercase flex items-center gap-2">
+                ${getSvg('users', 'w-5 h-5 text-purple-400')}
+                Active Deployment Squad
+                <span class="text-xs font-normal text-zinc-400 lowercase tracking-normal">(${teamMetrics.activeAgents.length}/3 selected)</span>
+              </h2>
+              <p class="text-xs text-zinc-400 mt-0.5">Drag and drop pods to reorder your team lineup (Slot 1 Anchor, Slot 2 Sub, Slot 3 Assist). Click agents below to swap.</p>
+            </div>
+            <button onclick="clearTeam()" ${teamMetrics.activeAgents.length === 0 ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-xs text-zinc-400 hover:text-red-400 transition disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1">
+              ${getSvg('trash', 'w-3.5 h-3.5')}
+              Clear Squad
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            ${podsHtml}
+          </div>
+
+          <div class="mt-5 pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3 bg-zinc-950/70 p-3.5 rounded-xl border border-zinc-800/80">
+            <div class="flex items-center gap-2">
+              <span class="text-purple-400">${getSvg('bookmark', 'w-4 h-4')}</span>
+              <span class="text-xs font-semibold text-zinc-300">Preserve this tactical lineup?</span>
+              <span class="text-[11px] text-zinc-500 hidden sm:inline">Save under Favorites, Viable, or Untested lists for 1-click deployment.</span>
+            </div>
+            <button onclick="openSaveTeamModal()" ${teamMetrics.activeAgents.length === 0 ? 'disabled' : ''} class="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-xs font-bold text-white flex items-center gap-2 transition shadow-lg shadow-purple-600/30 disabled:opacity-40 disabled:pointer-events-none">
+              ${getSvg('bookmark', 'w-4 h-4')}
+              Save Team
+            </button>
+          </div>
+
+          ${teamMetrics.activeAgents.length > 0 ? `
+            <div class="mt-5 pt-5 border-t border-zinc-800 bg-zinc-950/60 rounded-xl p-4 border border-zinc-800/70">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3">
+                  <div class="text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Squad Passive Synergy</div>
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-black ${teamMetrics.synergyPercentage === 100 ? 'text-emerald-400' : teamMetrics.synergyPercentage >= 66 ? 'text-purple-400' : 'text-amber-400'}">${teamMetrics.synergyPercentage}%</span>
+                    <span class="text-xs text-zinc-400">(${teamMetrics.activeSynergiesCount}/${teamMetrics.activeAgents.length} Active)</span>
+                  </div>
+                  <div class="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                    <div class="h-full transition-all duration-500 ${teamMetrics.synergyPercentage === 100 ? 'bg-emerald-400' : 'bg-purple-500'}" style="width: ${teamMetrics.synergyPercentage}%"></div>
+                  </div>
+                </div>
+
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3">
+                  <div class="text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Role Balance</div>
+                  <div class="flex flex-wrap gap-1.5 text-xs">
+                    <span class="px-2 py-0.5 rounded text-[11px] font-medium ${teamMetrics.hasDps ? 'bg-red-950/60 text-red-300 border border-red-500/40' : 'bg-zinc-800 text-zinc-500'}">Carry (DPS/Rupture/Claret): ${teamMetrics.hasDps ? '✓' : 'None'}</span>
+                    <span class="px-2 py-0.5 rounded text-[11px] font-medium ${teamMetrics.hasStun ? 'bg-amber-950/60 text-amber-300 border border-amber-500/40' : 'bg-zinc-800 text-zinc-500'}">Stun: ${teamMetrics.hasStun ? '✓' : 'None'}</span>
+                    <span class="px-2 py-0.5 rounded text-[11px] font-medium ${teamMetrics.hasSupport ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40' : 'bg-zinc-800 text-zinc-500'}">Support/Armorer: ${teamMetrics.hasSupport ? '✓' : 'None'}</span>
+                  </div>
+                </div>
+
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3">
+                  <div class="text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Disorder Potential</div>
+                  <div class="text-xs font-bold ${teamMetrics.canTriggerDisorder ? 'text-cyan-400' : 'text-zinc-400'}">${teamMetrics.canTriggerDisorder ? 'High (Dual/Multi Anomaly)' : 'Standard Mono/Dual'}</div>
+                  <div class="flex items-center gap-1 mt-2">
+                    ${teamMetrics.uniqueElements.map(el => {
+                      const aInfo = ATTRIBUTES[el] || ATTRIBUTES.Physical;
+                      return `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${aInfo.bg} ${aInfo.text} border ${aInfo.border}">${el}</span>`;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <div class="bg-zinc-900/80 border border-zinc-800 rounded-lg p-3">
+                  <div class="text-[11px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Tactical Readout</div>
+                  <p class="text-[11px] text-zinc-300 leading-snug">
+                    ${teamMetrics.synergyPercentage === 100 ? 'Full synergy attained! All deployed agents benefit from unlocked Additional Abilities.' : 'Incomplete synergy. Pair agents sharing Element, Faction, or designated Role.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        ${recommendationSectionHtml}
+        ${cornerstoneSectionHtml}
+
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                ${getSvg('database', 'w-4 h-4 text-purple-400')}
+                Agent Selection Matrix
+              </h3>
+              <p class="text-xs text-zinc-400">Click any agent card to toggle deployment into squad. Element and Specialty traits are displayed side-by-side above each agent.</p>
+            </div>
+            <span id="matrix-count-badge" class="text-xs text-zinc-400 font-mono">Showing ${getFilteredMatrixAgents().length} of ${state.agents.length} agents</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 bg-zinc-900/60 p-3 rounded-xl border border-zinc-800">
+            <div class="relative">
+              <span class="absolute left-3 top-3 text-zinc-500">${getSvg('search', 'w-3.5 h-3.5')}</span>
+              <input type="text" id="matrix-search-input" value="${state.searchQuery}" oninput="handleMatrixSearch(this.value)" placeholder="Search name, faction..." class="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-purple-500" />
+            </div>
+
+            <button type="button" onclick="resetMatrixFilters()" class="bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white rounded-lg px-2.5 py-1.5 text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm" title="Clear search text and reset all filter dropdowns">
+              ${getSvg('refresh', 'w-3.5 h-3.5 text-purple-400')}
+              <span>Reset Filters</span>
+            </button>
+
+            <select id="matrix-attribute-select" onchange="handleMatrixFilter('attributeFilter', this.value)" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500">
+              <option value="All" ${state.attributeFilter === 'All' ? 'selected' : ''}>All Attributes</option>
+              ${Object.keys(ATTRIBUTES).map(attr => `<option value="${attr}" ${state.attributeFilter === attr ? 'selected' : ''}>${attr}</option>`).join('')}
+            </select>
+
+            <select id="matrix-specialty-select" onchange="handleMatrixFilter('specialtyFilter', this.value)" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500">
+              <option value="All" ${state.specialtyFilter === 'All' ? 'selected' : ''}>All Roles</option>
+              ${Object.keys(SPECIALTIES).map(spec => `<option value="${spec}" ${state.specialtyFilter === spec ? 'selected' : ''}>${spec}</option>`).join('')}
+            </select>
+
+            <select id="matrix-faction-select" onchange="handleMatrixFilter('factionFilter', this.value)" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500">
+              <option value="All" ${state.factionFilter === 'All' ? 'selected' : ''}>All Factions</option>
+              ${FACTIONS.map(fac => `<option value="${fac}" ${state.factionFilter === fac ? 'selected' : ''}>${fac}</option>`).join('')}
+            </select>
+
+            <select id="matrix-ownership-select" onchange="handleMatrixFilter('ownershipFilter', this.value)" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-purple-500">
+              <option value="all" ${state.ownershipFilter === 'all' ? 'selected' : ''}>All Ownership (${state.agents.length})</option>
+              <option value="owned" ${state.ownershipFilter === 'owned' ? 'selected' : ''}>Acquired Only (${state.agents.filter(a => a.owned).length})</option>
+              <option value="unowned" ${state.ownershipFilter === 'unowned' ? 'selected' : ''}>Unacquired (${state.agents.filter(a => !a.owned).length})</option>
+            </select>
+          </div>
+
+          <div id="agent-matrix-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3.5"></div>
+        </div>
+      `;
+    }
+
+    function renderSavedTab() {
+      const counts = {
+        Favorites: state.savedTeams.filter(t => t.category === 'Favorites').length,
+        Viable: state.savedTeams.filter(t => t.category === 'Viable').length,
+        Untested: state.savedTeams.filter(t => t.category === 'Untested').length,
+      };
+
+      const categories = ['Favorites', 'Viable', 'Untested'].filter(cat => state.savedCategoryFilter === 'All' || state.savedCategoryFilter === cat);
+
+      return `
+        <div class="space-y-6">
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-900/70 p-4 rounded-xl border border-zinc-800">
+            <div>
+              <h2 class="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                ${getSvg('bookmark', 'w-5 h-5 text-purple-400')}
+                Saved Squad Compendium
+              </h2>
+              <p class="text-xs text-zinc-400">Organize, review, and instantly deploy team compositions categorized across Favorites, Viable, and Untested tiers.</p>
+            </div>
+
+            <div class="flex items-center gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 text-xs">
+              ${[
+                { id: 'All', label: 'All Teams', count: state.savedTeams.length },
+                { id: 'Favorites', label: 'Favorites', icon: 'star', count: counts.Favorites },
+                { id: 'Viable', label: 'Viable', icon: 'check', count: counts.Viable },
+                { id: 'Untested', label: 'Untested', icon: 'flask', count: counts.Untested }
+              ].map(c => `
+                <button onclick="state.savedCategoryFilter = '${c.id}'; renderApp();" class="px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition ${
+                  state.savedCategoryFilter === c.id ? 'bg-purple-600 text-white' : 'text-zinc-400 hover:text-zinc-200'
+                }">
+                  ${c.icon ? getSvg(c.icon, 'w-3.5 h-3.5') : ''}
+                  <span>${c.label}</span>
+                  <span class="text-[10px] opacity-70">(${c.count})</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          ${categories.map(catName => {
+            const teamsInCat = state.savedTeams.filter(t => t.category === catName);
+            const badgeMeta = {
+              Favorites: { border: 'border-amber-500/40', text: 'text-amber-400', bg: 'bg-amber-950/30', icon: 'star' },
+              Viable: { border: 'border-emerald-500/40', text: 'text-emerald-400', bg: 'bg-emerald-950/30', icon: 'check' },
+              Untested: { border: 'border-cyan-500/40', text: 'text-cyan-400', bg: 'bg-cyan-950/30', icon: 'flask' }
+            }[catName];
+
+            return `
+              <div class="space-y-3">
+                <div class="flex items-center gap-2 pb-1 border-b border-zinc-800">
+                  <div class="p-1.5 rounded-lg border ${badgeMeta.bg} ${badgeMeta.border}">
+                    ${getSvg(badgeMeta.icon, `w-4 h-4 ${badgeMeta.text}`)}
+                  </div>
+                  <h3 class="text-sm font-bold uppercase tracking-wider text-zinc-200">${catName}</h3>
+                  <span class="text-xs text-zinc-500">(${teamsInCat.length})</span>
+                </div>
+
+                ${teamsInCat.length === 0 ? `
+                  <div class="p-6 rounded-xl border border-dashed border-zinc-800 bg-zinc-900/30 text-center text-zinc-500 text-xs">
+                    No squads currently categorized under ${catName}.
+                  </div>
+                ` : `
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    ${teamsInCat.map(team => {
+                      const teamAgents = team.agentIds.map(id => state.agents.find(a => a.id === id)).filter(Boolean);
+                      const isDeployed = team.agentIds.join(',') === state.teamIds.join(',');
+
+                      const activeCount = teamAgents.filter(ag => {
+                        const teammates = teamAgents.filter(o => o.id !== ag.id);
+                        return evaluatePassiveActive(ag, teammates);
+                      }).length;
+                      const synPct = teamAgents.length > 0 ? Math.round((activeCount / teamAgents.length) * 100) : 0;
+
+                      return `
+                        <div class="rounded-2xl border p-5 bg-zinc-900 transition flex flex-col justify-between shadow-xl ${isDeployed ? 'border-purple-500 ring-2 ring-purple-500/50' : 'border-zinc-800 hover:border-zinc-700'}">
+                          <div>
+                            <div class="flex items-start justify-between gap-2 mb-3">
+                              <div>
+                                <h4 class="font-black text-white text-base leading-snug">${team.name}</h4>
+                                <div class="flex items-center gap-2 mt-1.5">
+                                  <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-md border ${badgeMeta.bg} ${badgeMeta.border} ${badgeMeta.text} flex items-center gap-1.5">
+                                    ${getSvg(badgeMeta.icon, 'w-3.5 h-3.5')}
+                                    ${team.category}
+                                  </span>
+                                  <span class="text-xs font-bold ${synPct === 100 ? 'text-emerald-400' : 'text-purple-400'}">${synPct}% Synergy</span>
+                                </div>
+                              </div>
+                              <button onclick="deleteSavedTeam('${team.id}')" class="text-zinc-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-zinc-800 transition" title="Delete squad">
+                                ${getSvg('trash', 'w-4 h-4')}
+                              </button>
+                            </div>
+
+                            ${team.notes ? `<p class="text-xs text-zinc-400 italic mb-4 line-clamp-2">"${team.notes}"</p>` : ''}
+
+                            <div class="grid grid-cols-3 gap-3 bg-zinc-950/80 p-3 rounded-xl border border-zinc-800/80 mb-4">
+                              ${teamAgents.map(ag => {
+                                const aAttr = ATTRIBUTES[ag.attribute] || ATTRIBUTES.Physical;
+                                const aSpec = SPECIALTIES[ag.specialty] || { color: 'text-zinc-300' };
+                                return `
+                                  <div class="flex flex-col items-center text-center p-2 rounded-lg bg-zinc-900/60 border border-zinc-800/50">
+                                    ${renderAvatar(ag, 'lg')}
+                                    <span class="text-xs font-black text-white mt-2 truncate max-w-[95px]" title="${ag.name}">${ag.name}</span>
+                                    <div class="flex items-center justify-center gap-1 text-[11px] mt-0.5">
+                                      <span class="${aAttr.text} font-bold">${ag.attribute}</span>
+                                      <span class="text-zinc-600">•</span>
+                                      <span class="${aSpec.color} font-semibold">${ag.specialty}</span>
+                                    </div>
+                                  </div>
+                                `;
+                              }).join('')}
+                            </div>
+                          </div>
+
+                          <div class="pt-3 border-t border-zinc-800 flex items-center justify-between text-xs">
+                            <select onchange="changeSavedTeamCategory('${team.id}', this.value)" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-purple-500">
+                              <option value="Favorites" ${team.category === 'Favorites' ? 'selected' : ''}>Move to Favorites</option>
+                              <option value="Viable" ${team.category === 'Viable' ? 'selected' : ''}>Move to Viable</option>
+                              <option value="Untested" ${team.category === 'Untested' ? 'selected' : ''}>Move to Untested</option>
+                            </select>
+
+                            <button onclick="deploySavedTeam('${team.id}')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow ${
+                              isDeployed ? 'bg-purple-950/60 border border-purple-500/50 text-purple-300' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+                            }">
+                              ${getSvg('users', 'w-3.5 h-3.5')}
+                              ${isDeployed ? 'Deployed' : 'Deploy Squad'}
+                            </button>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                `}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderSheetTab() {
+      const sortedAgents = [...state.agents].sort((a, b) => a.name.localeCompare(b.name));
+
+      return `
+        <div class="space-y-4">
+          <div class="bg-zinc-900/60 p-3.5 rounded-xl border border-zinc-800 flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                ${getSvg('database', 'w-4 h-4 text-purple-400')}
+                Agent Tracker Sheet (${sortedAgents.length} Agents • Alphabetical A-Z)
+              </h2>
+              <p class="text-xs text-zinc-400 mt-0.5">Streamlined overview. Manage Acquired status, Level (1–60), Mindscape (0–6), and equipped W-Engine directly.</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900/50 shadow-xl">
+            <table class="w-full text-left text-xs text-zinc-300 border-collapse">
+              <thead class="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
+                <tr>
+                  <th class="py-2.5 px-3 w-48">Agent</th>
+                  <th class="py-2.5 px-2 w-24 text-center">Acquired</th>
+                  <th class="py-2.5 px-2 w-16 text-center">Level</th>
+                  <th class="py-2.5 px-2 w-16 text-center">Mindscape</th>
+                  <th class="py-2.5 px-3">W-Engine</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-zinc-800/60 font-mono">
+                ${sortedAgents.map(agent => `
+                  <tr class="hover:bg-zinc-800/40 transition">
+                    <td class="py-2 px-3 font-sans">
+                      <div class="flex items-center gap-2 min-w-0">
+                        ${renderAvatar(agent, 'sm')}
+                        <span class="font-bold text-white text-xs truncate">${agent.name}</span>
+                      </div>
+                    </td>
+
+                    <td class="py-2 px-2 text-center">
+                      <button type="button" onclick="toggleOwnership('${agent.id}')" class="px-2 py-0.5 rounded-full text-[10px] font-bold transition inline-flex items-center gap-1 select-none ${
+                        agent.owned ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-900/60' : 'bg-zinc-900 text-zinc-500 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-300'
+                      }">
+                        <span class="w-1.5 h-1.5 rounded-full ${agent.owned ? 'bg-emerald-400' : 'bg-zinc-600'}"></span>
+                        ${agent.owned ? 'TRUE' : 'FALSE'}
+                      </button>
+                    </td>
+
+                    <td class="py-2 px-2 text-center">
+                      <input type="number" min="1" max="60" value="${agent.level}" onchange="updateAgentLevel('${agent.id}', this.value)" class="w-14 bg-zinc-950/90 border border-zinc-800 hover:border-zinc-700 focus:border-cyan-500 rounded px-1.5 py-0.5 text-cyan-300 font-mono font-bold text-xs text-center focus:outline-none transition shadow-inner" />
+                    </td>
+
+                    <td class="py-2 px-2 text-center">
+                      <input type="number" min="0" max="6" value="${agent.mindscape || 0}" onchange="updateAgentMindscape('${agent.id}', this.value)" class="w-14 bg-zinc-950/90 border border-zinc-800 hover:border-purple-500 focus:border-purple-500 rounded px-1.5 py-0.5 text-purple-300 font-mono font-bold text-xs text-center focus:outline-none transition shadow-inner" />
+                    </td>
+
+                    <td class="py-2 px-3 font-sans">
+                      <input type="text" value="${agent.wEngine || ''}" onchange="updateAgentField('${agent.id}', 'wEngine', this.value)" placeholder="Equip W-Engine..." class="w-full bg-zinc-950/60 hover:bg-zinc-950 focus:bg-zinc-950 border border-zinc-800/80 hover:border-zinc-700 focus:border-purple-500 rounded px-2.5 py-1 text-zinc-200 text-xs placeholder-zinc-600 focus:outline-none transition truncate" />
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderActiveTab(teamMetrics, assetMetrics) {
+      switch (state.activeTab) {
+        case 'builder': return renderBuilderTab(teamMetrics);
+        case 'saved': return renderSavedTab();
+        case 'sheet': return renderSheetTab();
+        default: return renderBuilderTab(teamMetrics);
+      }
+    }
+
+    function renderModal() {
+      const root = document.getElementById('modal-root');
+      if (!root) return;
+
+      if (!state.saveModalOpen) {
+        root.innerHTML = '';
+        return;
+      }
+
+      const activeAgents = state.teamIds.map(id => state.agents.find(a => a.id === id)).filter(Boolean);
+      const defaultName = activeAgents.map(a => a.name).join(' + ') || 'New Tactical Squad';
+
+      root.innerHTML = `
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div class="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <div class="flex items-center gap-2">
+                <span class="text-purple-400">${getSvg('bookmark', 'w-5 h-5')}</span>
+                <h3 class="text-base font-bold text-white">Save Current Squad</h3>
+              </div>
+              <button onclick="state.saveModalOpen = false; renderApp();" class="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800">
+                ${getSvg('x', 'w-5 h-5')}
+              </button>
+            </div>
+
+            <div class="flex items-center justify-center gap-3 py-2 bg-zinc-950 p-3 rounded-xl border border-zinc-800">
+              ${activeAgents.map(a => `
+                <div class="flex flex-col items-center">
+                  ${renderAvatar(a, 'sm')}
+                  <span class="text-[10px] text-zinc-300 font-bold mt-1">${a.name}</span>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="space-y-3 text-xs">
+              <div class="space-y-1">
+                <label class="block text-zinc-400 font-semibold">Squad Name</label>
+                <input type="text" id="save-team-name" value="${defaultName}" placeholder="e.g. Shock & Stagger Vanguard" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-purple-500" />
+              </div>
+
+              <div class="space-y-1">
+                <label class="block text-zinc-400 font-semibold">Category Tier</label>
+                <select id="save-team-category" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-purple-500">
+                  <option value="Favorites">Favorites</option>
+                  <option value="Viable">Viable</option>
+                  <option value="Untested">Untested</option>
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <label class="block text-zinc-400 font-semibold">Tactical Strategy Notes</label>
+                <textarea rows="3" id="save-team-notes" placeholder="e.g. Stun opening into Anomaly reaction and Burst chain..." class="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-200 focus:outline-none focus:border-purple-500 text-xs"></textarea>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-zinc-800 flex items-center justify-end space-x-2">
+              <button onclick="state.saveModalOpen = false; renderApp();" class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 transition">
+                Cancel
+              </button>
+              <button onclick="confirmSaveTeam()" class="px-5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white transition shadow-lg shadow-purple-600/30">
+                Confirm & Save
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.handlePodDragStart = function(event, index) {
+      state.draggedPodIdx = index;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', index);
+      event.currentTarget.classList.add('opacity-40');
+    };
+
+    window.handlePodDragOver = function(event, targetIdx) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      const targetPod = document.getElementById(`pod-slot-${targetIdx}`);
+      if (targetPod && state.draggedPodIdx !== null && state.draggedPodIdx !== targetIdx) {
+        targetPod.classList.add('drag-over-pod');
+      }
+    };
+
+    window.handlePodDragLeave = function(event, targetIdx) {
+      const targetPod = document.getElementById(`pod-slot-${targetIdx}`);
+      if (targetPod) {
+        targetPod.classList.remove('drag-over-pod');
+      }
+    };
+
+    window.handlePodDrop = function(event, targetIdx) {
+      event.preventDefault();
+      const targetPod = document.getElementById(`pod-slot-${targetIdx}`);
+      if (targetPod) targetPod.classList.remove('drag-over-pod');
+
+      const sourceIdx = state.draggedPodIdx;
+      if (sourceIdx !== null && sourceIdx !== targetIdx) {
+        const nextIds = [...state.teamIds];
+        const [movedId] = nextIds.splice(sourceIdx, 1);
+        nextIds.splice(targetIdx, 0, movedId);
+        state.teamIds = nextIds;
+        persistData();
+      }
+      state.draggedPodIdx = null;
+      renderApp();
+    };
+
+    window.switchTab = function(tabId) { state.activeTab = tabId; renderApp(); };
+    window.toggleTeamMember = function(agentId) {
+      if (state.teamIds.includes(agentId)) {
+        state.teamIds = state.teamIds.filter(id => id !== agentId);
+      } else {
+        if (state.teamIds.length >= 3) state.teamIds = [...state.teamIds.slice(1), agentId];
+        else state.teamIds = [...state.teamIds, agentId];
+      }
+      persistData();
+      renderApp();
+    };
+    window.addRecommendedAgent = function(agentId) {
+      if (state.teamIds.includes(agentId)) return;
+      if (state.teamIds.length < 3) state.teamIds = [...state.teamIds, agentId];
+      else state.teamIds = [state.teamIds[0], state.teamIds[1], agentId];
+      persistData();
+      renderApp();
+    };
+    window.deployCornerstoneCandidate = function(agentId) {
+      if (!agentId) return;
+      if (state.teamIds.length >= 2) state.teamIds = [state.teamIds[0], state.teamIds[1], agentId];
+      else if (state.teamIds.length === 1) state.teamIds = [state.teamIds[0], agentId];
+      else state.teamIds = [agentId];
+      persistData();
+      renderApp();
+    };
+    window.setCornerstoneCandidate = function(slot, agentId) {
+      if (slot === 'A') state.compareAgentAId = agentId;
+      else state.compareAgentBId = agentId;
+      renderApp();
+    };
+    window.toggleLockCandidate = function(slot) {
+      if (slot === 'A') state.lockCandidateA = !state.lockCandidateA;
+      else state.lockCandidateB = !state.lockCandidateB;
+      renderApp();
+    };
+    window.toggleRecomFocus = function(focusKey) {
+      const idx = state.recomFocuses.indexOf(focusKey);
+      if (idx >= 0) {
+        state.recomFocuses.splice(idx, 1);
+      } else {
+        if (focusKey === 'disorder') {
+          state.recomFocuses = state.recomFocuses.filter(f => f !== 'mono');
+        } else if (focusKey === 'mono') {
+          state.recomFocuses = state.recomFocuses.filter(f => f !== 'disorder');
+        }
+        state.recomFocuses.push(focusKey);
+      }
+      renderApp();
+    };
+    window.clearTeam = function() { state.teamIds = []; persistData(); renderApp(); };
+    window.toggleOwnership = function(agentId) {
+      const ag = state.agents.find(a => a.id === agentId);
+      if (ag) {
+        ag.owned = !ag.owned;
+        persistData();
+        renderApp();
+      }
+    };
+    window.updateAgentLevel = function(agentId, val) {
+      const parsed = parseInt(val, 10);
+      const ag = state.agents.find(a => a.id === agentId);
+      if (ag) {
+        ag.level = isNaN(parsed) ? 1 : Math.max(1, Math.min(60, parsed));
+        persistData();
+      }
+    };
+    window.updateAgentMindscape = function(agentId, val) {
+      const parsed = parseInt(val, 10);
+      const ag = state.agents.find(a => a.id === agentId);
+      if (ag) {
+        ag.mindscape = isNaN(parsed) ? 0 : Math.max(0, Math.min(6, parsed));
+        persistData();
+      }
+    };
+    window.updateAgentField = function(agentId, field, val) {
+      const ag = state.agents.find(a => a.id === agentId);
+      if (ag) {
+        ag[field] = val;
+        persistData();
+      }
+    };
+    window.openSaveTeamModal = function() { state.saveModalOpen = true; renderApp(); };
+    window.confirmSaveTeam = function() {
+      const nameInput = document.getElementById('save-team-name');
+      const catInput = document.getElementById('save-team-category');
+      const notesInput = document.getElementById('save-team-notes');
+      if (state.teamIds.length === 0) return;
+      state.savedTeams.unshift({
+        id: 'team_' + Date.now(),
+        name: nameInput?.value?.trim() || 'Custom Squad',
+        category: catInput?.value || 'Favorites',
+        agentIds: [...state.teamIds],
+        notes: notesInput?.value?.trim() || ''
+      });
+      state.saveModalOpen = false;
+      persistData();
+      renderApp();
+    };
+    window.deleteSavedTeam = function(id) {
+      state.savedTeams = state.savedTeams.filter(t => t.id !== id);
+      persistData();
+      renderApp();
+    };
+    window.changeSavedTeamCategory = function(teamId, newCat) {
+      const t = state.savedTeams.find(item => item.id === teamId);
+      if (t) {
+        t.category = newCat;
+        persistData();
+        renderApp();
+      }
+    };
+    window.deploySavedTeam = function(teamId) {
+      const t = state.savedTeams.find(item => item.id === teamId);
+      if (t) {
+        state.teamIds = [...t.agentIds];
+        state.activeTab = 'builder';
+        persistData();
+        renderApp();
+      }
+    };
+    window.removeTeamMember = function(index) {
+      const next = [...state.teamIds];
+      next.splice(index, 1);
+      state.teamIds = next;
+      persistData();
+      renderApp();
+    };
+
+    window.resetToFactoryDefaults = function() {
+      if (confirm('Reset all agents and squad lists to original defaults? This will erase your locally saved edits.')) {
+        localStorage.removeItem('zzz_protocol_agents');
+        localStorage.removeItem('zzz_protocol_teams');
+        localStorage.removeItem('zzz_protocol_active_ids');
+        state.agents = INITIAL_AGENTS.map(a => ({ ...a })).sort((a, b) => a.name.localeCompare(b.name));
+        state.savedTeams = INITIAL_SAVED_TEAMS.map(t => ({ ...t }));
+        state.teamIds = ['rina', 'anby', 'ben'];
+        persistData();
+        renderApp();
+      }
+    };
+
+    function renderApp() {
+      const app = document.getElementById('app');
+      const assetMetrics = getAssetMetrics();
+      const teamMetrics = getTeamMetrics();
+
+      app.innerHTML = `
+        <header class="sticky top-0 z-30 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+              <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-purple-500 via-indigo-600 to-cyan-400 p-0.5 shadow-lg shadow-purple-500/20 flex items-center justify-center">
+                <div class="h-full w-full bg-zinc-950 rounded-[10px] flex items-center justify-center text-purple-400">
+                  ${getSvg('crosshair', 'w-5 h-5 animate-pulse')}
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-lg font-black tracking-wider text-white uppercase">ZENLESS // PROTOCOL</span>
+                  <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">v6.7 • Streamlined</span>
+                </div>
+                <p class="text-xs text-zinc-400">Agent Asset Tracker & Squad Synergy Matrix</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 sm:gap-5 text-xs bg-zinc-900/90 border border-zinc-800 rounded-xl px-4 py-2">
+              <div>
+                <span class="text-zinc-500 block text-[10px] uppercase tracking-wider">Agents Owned</span>
+                <span class="font-bold text-white text-sm">${assetMetrics.owned} <span class="text-zinc-600 font-normal">/ ${assetMetrics.total}</span></span>
+              </div>
+              <div class="w-px h-6 bg-zinc-800"></div>
+              <div>
+                <span class="text-zinc-500 block text-[10px] uppercase tracking-wider">Collection Rate</span>
+                <span class="font-bold text-cyan-400 text-sm">${assetMetrics.collectionRate}%</span>
+              </div>
+              <div class="w-px h-6 bg-zinc-800"></div>
+              <div>
+                <span class="text-zinc-500 block text-[10px] uppercase tracking-wider">Level 20+</span>
+                <span class="font-bold text-amber-400 text-sm">${assetMetrics.midLevelCount}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 border-t border-zinc-900 overflow-x-auto scrollbar-none">
+            ${[
+              { id: 'builder', label: 'Squad Synergy (Max 3)', icon: 'users', count: state.teamIds.length },
+              { id: 'saved', label: 'Saved Teams', icon: 'bookmark', count: state.savedTeams.length },
+              { id: 'sheet', label: 'Spreadsheet Grid', icon: 'database' },
+            ].map(tab => {
+              const isActive = state.activeTab === tab.id;
+              return `
+                <button onclick="switchTab('${tab.id}')" class="flex items-center gap-2 py-2.5 px-4 text-xs font-semibold uppercase tracking-wider border-b-2 transition whitespace-nowrap ${
+                  isActive ? 'border-purple-500 text-white bg-purple-500/10' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
+                }">
+                  ${getSvg(tab.icon, `w-4 h-4 ${isActive ? 'text-purple-400' : 'text-zinc-500'}`)}
+                  <span>${tab.label}</span>
+                  ${tab.count !== undefined ? `<span class="px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-purple-500/30 text-purple-200' : 'bg-zinc-800 text-zinc-400'}">${tab.count}</span>` : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 flex-1">
+          ${renderActiveTab(teamMetrics, assetMetrics)}
+        </main>
+      `;
+
+      renderModal();
+      if (state.activeTab === 'builder') {
+        renderMatrixGridOnly();
+      }
+    }
+
+    function initApp() { renderApp(); }
+    if (document.readyState === 'loading') { window.addEventListener('DOMContentLoaded', initApp); }
+    else { initApp(); }
+  </script>
+</body>
+</html>
